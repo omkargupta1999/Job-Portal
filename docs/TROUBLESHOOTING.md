@@ -13,7 +13,8 @@ docker compose exec jobhub python -m app.cli check-config
 
 | Log message | Cause | Fix |
 |---|---|---|
-| `Configuration error: JOBHUB_… must be …` | A value in `.env` is invalid. | Correct it; the valid ranges are listed in `.env.example`. |
+| `Configuration error: JOBHUB_… must be …` | A value in `.env` is invalid. | Correct it; the valid ranges are listed in `.env.example`. Then run `docker compose up -d`. `docker compose restart` keeps the old environment, and `docker logs` still shows lines from earlier failed starts. |
+| `JOBHUB_AUTH_PASSWORD must be at least 12 characters, but JobHub received N` | The login password is too short, **or** Docker Compose shortened it. In `.env`, an unquoted or double-quoted `$name` is expanded as a variable (usually to nothing) and ` #` starts a comment. | Use 12+ characters and wrap the value in single quotes: `JOBHUB_AUTH_PASSWORD='my$ecret-pass-2026'`. To run without a login (fine on `127.0.0.1`), leave both `JOBHUB_AUTH_USER` and `JOBHUB_AUTH_PASSWORD` empty. Then run `docker compose up -d`. |
 | `Database schema version N is newer than this JobHub build` | You downgraded the image. | Run the newer image again, or restore a backup taken with the older version. |
 | `PermissionError: … /data` | The volume was created by another user ID. | Run `docker run --rm --user 0 -v jobhub-data:/data --entrypoint chown jobhub:latest -R 10001:10001 /data`. |
 | `failed to bind port` / `address already in use` | Another service is using 8080. | Change `JOBHUB_PORT` in `.env`, then run `docker compose up -d`. |

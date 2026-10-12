@@ -56,3 +56,13 @@ def test_dotenv_never_overrides_environment(tmp_path, monkeypatch):
     assert os.environ["JOBHUB_OTHER"] == "x"
     assert env_file.read_text().startswith("JOBHUB_TEST_VALUE=fromfile")  # file untouched
     monkeypatch.delenv("JOBHUB_OTHER")
+
+
+def test_short_password_error_is_actionable():
+    with pytest.raises(ConfigError) as exc:
+        load_settings({"JOBHUB_AUTH_USER": "omkar", "JOBHUB_AUTH_PASSWORD": "Secret"})
+    msg = str(exc.value)
+    assert "received 6" in msg and "single quotes" in msg and "leave both" in msg
+    assert "Secret" not in msg  # never echo the secret
+    with pytest.raises(ConfigError, match="JOBHUB_AUTH_PASSWORD is empty"):
+        load_settings({"JOBHUB_AUTH_USER": "omkar"})

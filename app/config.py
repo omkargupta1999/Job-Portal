@@ -127,10 +127,19 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
 
     auth_user = get("JOBHUB_AUTH_USER", "")
     auth_password = get("JOBHUB_AUTH_PASSWORD", "")
+    disable_hint = "To run without a login, leave both JOBHUB_AUTH_USER and JOBHUB_AUTH_PASSWORD empty."
     if bool(auth_user) != bool(auth_password):
-        raise ConfigError("JOBHUB_AUTH_USER and JOBHUB_AUTH_PASSWORD must be set together")
+        missing = "JOBHUB_AUTH_PASSWORD" if auth_user else "JOBHUB_AUTH_USER"
+        raise ConfigError(
+            f"JOBHUB_AUTH_USER and JOBHUB_AUTH_PASSWORD must be set together ({missing} is empty). {disable_hint}"
+        )
     if auth_password and len(auth_password) < 12:
-        raise ConfigError("JOBHUB_AUTH_PASSWORD must be at least 12 characters")
+        raise ConfigError(
+            f"JOBHUB_AUTH_PASSWORD must be at least 12 characters, but JobHub received {len(auth_password)}. "
+            "If your password contains '$' or ' #', Docker Compose shortens it: put it in single quotes in .env, "
+            f"e.g. JOBHUB_AUTH_PASSWORD='my$ecret-pass'. {disable_hint} "
+            "After editing .env run 'docker compose up -d' (restart does not reload .env)."
+        )
 
     allowed_hosts = _parse_list(get("JOBHUB_ALLOWED_HOSTS", "127.0.0.1,localhost"))
     if not allowed_hosts:
