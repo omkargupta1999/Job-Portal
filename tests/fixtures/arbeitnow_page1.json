@@ -1,0 +1,62 @@
+{
+ "data": [
+  {
+   "slug": "senior-devops-engineer-berlin-123",
+   "company_name": "Acme Cloud GmbH",
+   "title": "Senior DevOps Engineer (m/w/d)",
+   "description": "<p>We are looking for a <strong>Senior DevOps Engineer</strong> to run our platform.</p>\n<h2>Responsibilities</h2><ul><li>Operate Kubernetes (K8s) clusters</li><li>Maintain GitLab CI pipelines and Jenkins jobs</li><li>Automate infrastructure with Terraform and Helm</li></ul>\n<h2>Requirements</h2><ul><li>5+ years of experience in DevOps</li><li>Strong Linux and Python skills</li><li>Experience with Prometheus and Grafana</li></ul>\n<h2>Nice to have</h2><ul><li>Istio</li><li>CKA certification</li></ul>\n<p>Salary: \u20ac70,000 - \u20ac85,000 per year. Visa sponsorship is available. Relocation package provided.</p>\n<script>alert('xss')</script><a href=\"javascript:alert(1)\">bad link</a>",
+   "remote": false,
+   "url": "https://www.arbeitnow.com/jobs/companies/acme/senior-devops-engineer-berlin-123",
+   "tags": [
+    "DevOps",
+    "Kubernetes"
+   ],
+   "job_types": [
+    "full time"
+   ],
+   "location": "Berlin",
+   "created_at": 1760000000
+  },
+  {
+   "slug": "frontend-developer-remote-456",
+   "company_name": "Pixel Labs",
+   "title": "Frontend Developer",
+   "description": "<p>React, TypeScript, CSS. 2+ years experience.</p>",
+   "remote": true,
+   "url": "https://www.arbeitnow.com/jobs/companies/pixel/frontend-developer-remote-456",
+   "tags": [
+    "Frontend"
+   ],
+   "job_types": [
+    "full time"
+   ],
+   "location": "Germany",
+   "created_at": 1760100000
+  },
+  {
+   "slug": "",
+   "company_name": "Broken",
+   "title": "Missing slug",
+   "description": "",
+   "remote": false,
+   "url": "https://www.arbeitnow.com/jobs/x",
+   "tags": [],
+   "job_types": [],
+   "location": "",
+   "created_at": null
+  }
+ ],
+ "links": {
+  "first": "https://www.arbeitnow.com/api/job-board-api?page=1",
+  "last": null,
+  "prev": null,
+  "next": "https://www.arbeitnow.com/api/job-board-api?page=2"
+ },
+ "meta": {
+  "current_page": 1,
+  "from": 1,
+  "path": "https://www.arbeitnow.com/api/job-board-api",
+  "per_page": 100,
+  "to": 3
+ }
+}

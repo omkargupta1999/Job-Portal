@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_card, empty %}
+{% block title %}Discover Jobs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Discover Jobs</h1>
+    <p class="muted">{{ page.total }} job{{ '' if page.total == 1 else 's' }} match your filters{% if filters.active_count() %} · {{ filters.active_count() }} filter{{ '' if filters.active_count() == 1 else 's' }} active{% endif %}.</p>
+  </div>
+  <div class="head-actions">
+    <a class="btn btn-ghost btn-sm" href="/hidden"><svg class="i"><use href="#i-eye-off"/></svg>Hidden jobs</a>
+    <a class="btn btn-secondary btn-sm" href="/alerts?q_from={{ filters.query_string(page=1)|urlencode }}"><svg class="i"><use href="#i-bell"/></svg>Save as alert</a>
+  </div>
+</div>
+
+<div class="with-filters" data-persist-filters="discover" {% if reset %}data-reset="1"{% endif %}>
+  <details class="filters-toggle" open>
+    <summary class="btn btn-secondary btn-sm"><svg class="i"><use href="#i-filter"/></svg>Filters</summary>
+    {% set form_action = "/discover" %}
+    {% include "partials/filters.html" %}
+  </details>
+
+  <section class="results" aria-label="Results">
+    <div class="results-bar">
+      <span class="muted small">{% if page.total %}Showing {{ (page.page - 1) * page.per_page + 1 }}–{{ [page.page * page.per_page, page.total]|min }} of {{ page.total }}{% endif %}</span>
+      <form method="get" action="/discover" class="sort-form">
+        {% for k, v in filters.to_params() if k not in ('sort', 'page') %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+        <label class="inline-field"><span class="muted small">Sort by</span>
+          <select name="sort" data-autosubmit>
+            {% for k, label in SORTS.items() %}<option value="{{ k }}" {% if filters.sort == k %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        <noscript><button class="btn btn-ghost btn-sm" type="submit">Sort</button></noscript>
+      </form>
+    </div>
+
+    {% if page.items %}
+      <div class="stack">
+        {% set here = "/discover?" ~ filters.query_string() %}
+        {% for job in page.items %}{{ job_card(job, new_cutoff, here) }}{% endfor %}
+      </div>
+      {% set base_path = "/discover" %}{% include "partials/pager.html" %}
+    {% else %}
+      {% call empty("No jobs match these filters", "Try removing a filter, widening the country selection, or fetching new jobs.") %}
+        <div class="actions center"><a class="btn btn-secondary btn-sm" href="/discover?reset=1">Clear all filters</a></div>
+      {% endcall %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

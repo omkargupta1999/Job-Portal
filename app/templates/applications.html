@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_badge, empty %}
+{% block title %}My Applications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>My Applications</h1>
+    <p class="muted">{{ total }} record{{ '' if total == 1 else 's' }}. Records are kept even if the original listing disappears.</p>
+  </div>
+  <div class="head-actions">
+    <a class="btn btn-ghost btn-sm" href="/applications/export.csv?{{ {'q': state.q, 'status': state.status, 'group': state.group, 'sort': state.sort}|urlencode }}"><svg class="i"><use href="#i-download"/></svg>Export CSV</a>
+    <a class="btn btn-primary btn-sm" href="/applications/new"><svg class="i"><use href="#i-plus"/></svg>Add application</a>
+  </div>
+</div>
+
+<nav class="tabs" aria-label="Status groups">
+  {% for key, (label, _) in groups.items() %}
+  <a href="/applications?group={{ key }}" class="tab{% if state.group == key and not state.status %} is-active{% endif %}">{{ label }} <span>{{ group_counts[key] }}</span></a>
+  {% endfor %}
+</nav>
+
+<form class="toolbar" method="get" action="/applications">
+  <input type="hidden" name="group" value="{{ state.group }}">
+  <label class="field grow"><span class="sr-only">Search</span><input type="search" name="q" value="{{ state.q }}" placeholder="Search company, title, notes…"></label>
+  <label class="field"><span class="sr-only">Status</span>
+    <select name="status"><option value="">Any status</option>{% for st in APPLICATION_STATUSES %}<option {% if state.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}</select>
+  </label>
+  <label class="field"><span class="sr-only">Sort</span>
+    <select name="sort">{% for k, label in sorts.items() %}<option value="{{ k }}" {% if state.sort == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <button class="btn btn-secondary btn-sm" type="submit">Apply</button>
+</form>
+
+{% if rows %}
+<div class="table-wrap panel flush">
+  <table class="table">
+    <thead><tr><th>Company / role</th><th>Status</th><th class="hide-sm">Applied</th><th class="hide-md">Follow-up</th><th class="hide-md">Country</th><th class="hide-md">Updated</th><th><span class="sr-only">Actions</span></th></tr></thead>
+    <tbody>
+    {% for a in rows %}
+    <tr>
+      <td><a class="strong" href="/applications/{{ a.id }}">{{ a.company }}</a><div class="muted small">{{ a.title }}{% if a.job and a.job.is_expired %} · <span class="badge tone-muted">listing expired</span>{% endif %}</div></td>
+      <td>
+        <form method="post" action="/applications/{{ a.id }}/status" class="inline">
+          <input type="hidden" name="next" value="/applications?{{ {'group': state.group, 'q': state.q, 'status': state.status, 'sort': state.sort}|urlencode }}">
+          <label class="sr-only" for="st-{{ a.id }}">Status</label>
+          <select id="st-{{ a.id }}" name="status" class="status-select tone-{{ STATUS_TONES.get(a.status, 'neutral') }}" data-autosubmit>
+            {% for st in APPLICATION_STATUSES %}<option {% if a.status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}
+          </select>
+          <noscript><button class="btn btn-ghost btn-sm">Set</button></noscript>
+        </form>
+      </td>
+      <td class="hide-sm">{{ fmt_date(a.applied_on) }}</td>
+      <td class="hide-md {% if a.follow_up_date and a.follow_up_date < today and a.status not in ['Offer','Rejected','Withdrawn','No Response'] %}text-danger{% endif %}">{{ fmt_date(a.follow_up_date) }}</td>
+      <td class="hide-md muted">{{ a.country or '—' }}</td>
+      <td class="hide-md muted"><time datetime="{{ iso(a.updated_at) }}" data-relative>{{ fmt_date(a.updated_at) }}</time></td>
+      <td class="right">
+        {% if a.job_id %}<a class="icon-btn" href="/jobs/{{ a.job_id }}" title="Job details" aria-label="Job details"><svg class="i"><use href="#i-file"/></svg></a>{% endif %}
+        {% if a.job_url %}<a class="icon-btn" href="{{ a.job_url }}" target="_blank" rel="noopener noreferrer" title="Original listing" aria-label="Original listing"><svg class="i"><use href="#i-external"/></svg></a>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if pages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="/applications?{{ {'group': state.group, 'q': state.q, 'status': state.status, 'sort': state.sort, 'page': page - 1}|urlencode }}"><svg class="i"><use href="#i-chevron-left"/></svg>Previous</a>{% else %}<span></span>{% endif %}
+  <span class="muted small">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a class="btn btn-ghost btn-sm" href="/applications?{{ {'group': state.group, 'q': state.q, 'status': state.status, 'sort': state.sort, 'page': page + 1}|urlencode }}">Next<svg class="i"><use href="#i-chevron-right"/></svg></a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+  {% call empty("No applications here", "Track a job from its details page, mark one as applied, or add an application you found elsewhere.", "briefcase") %}
+    <div class="actions center"><a class="btn btn-primary btn-sm" href="/applications/new">Add application</a><a class="btn btn-secondary btn-sm" href="/discover">Discover jobs</a></div>
+  {% endcall %}
+{% endif %}
+{% endblock %}

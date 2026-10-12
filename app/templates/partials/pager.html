@@ -1,0 +1,7 @@
+{% if page.pages > 1 %}
+<nav class="pagination" aria-label="Pagination">
+  {% if page.page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ base_path }}?{{ filters.query_string(page=page.page - 1) }}" rel="prev"><svg class="i"><use href="#i-chevron-left"/></svg>Previous</a>{% else %}<span></span>{% endif %}
+  <span class="muted small">Page {{ page.page }} of {{ page.pages }}</span>
+  {% if page.page < page.pages %}<a class="btn btn-ghost btn-sm" href="{{ base_path }}?{{ filters.query_string(page=page.page + 1) }}" rel="next">Next<svg class="i"><use href="#i-chevron-right"/></svg></a>{% else %}<span></span>{% endif %}
+</nav>
+{% endif %}

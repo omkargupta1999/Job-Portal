@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "macros.html" import status_badge %}
+{% block title %}{{ app_row.company if app_row else 'New application' }}{% endblock %}
+{% block content %}
+<a class="back" href="/applications"><svg class="i"><use href="#i-chevron-left"/></svg>My Applications</a>
+<div class="page-head">
+  <div>
+    <h1>{% if app_row %}{{ app_row.company }}{% else %}Add application{% endif %}</h1>
+    {% if app_row %}<p class="muted">{{ app_row.title }} · {{ status_badge(app_row.status) }} · created {{ fmt_date(app_row.created_at) }} · updated <time datetime="{{ iso(app_row.updated_at) }}" data-relative>{{ fmt_dt(app_row.updated_at) }}</time></p>
+    {% else %}<p class="muted">For roles you found outside JobHub (for example via LinkedIn or Naukri search links).</p>{% endif %}
+  </div>
+  {% if app_row and app_row.job_id %}<div class="head-actions"><a class="btn btn-secondary btn-sm" href="/jobs/{{ app_row.job_id }}">Job details</a></div>{% endif %}
+</div>
+
+<div class="detail-grid">
+  <form method="post" action="{{ '/applications/%d' % app_row.id if app_row else '/applications/new' }}" class="panel form">
+    <div class="form-grid two">
+      <label class="field"><span>Company *</span><input type="text" name="company" required maxlength="200" value="{{ app_row.company if app_row else '' }}"></label>
+      <label class="field"><span>Job title *</span><input type="text" name="title" required maxlength="300" value="{{ app_row.title if app_row else '' }}"></label>
+      <label class="field"><span>Job URL</span><input type="url" name="job_url" maxlength="1000" value="{{ app_row.job_url if app_row else '' }}" placeholder="https://"></label>
+      <label class="field"><span>Country</span><input type="text" name="country" maxlength="100" value="{{ app_row.country if app_row else '' }}" list="country-list"></label>
+      <label class="field"><span>Status</span>
+        <select name="status">{% for st in APPLICATION_STATUSES %}<option {% if (app_row and app_row.status == st) or (not app_row and st == 'Interested') %}selected{% endif %}>{{ st }}</option>{% endfor %}</select>
+      </label>
+      {% if app_row %}<label class="field"><span>Note for this status change <em class="muted">(optional)</em></span><input type="text" name="status_note" maxlength="500"></label>{% endif %}
+      <label class="field"><span>Application date</span><input type="date" name="applied_on" value="{{ app_row.applied_on.isoformat() if app_row and app_row.applied_on else '' }}"></label>
+      <label class="field"><span>Follow-up date</span><input type="date" name="follow_up_date" value="{{ app_row.follow_up_date.isoformat() if app_row and app_row.follow_up_date else '' }}"></label>
+      <label class="field"><span>Confirmation reference</span><input type="text" name="confirmation_ref" maxlength="200" value="{{ app_row.confirmation_ref if app_row else '' }}"></label>
+      <label class="field"><span>Salary details</span><input type="text" name="salary_details" maxlength="300" value="{{ app_row.salary_details if app_row else '' }}" placeholder="e.g. offered 32 LPA fixed"></label>
+    </div>
+    <label class="field"><span>Interview dates</span><textarea name="interview_dates" rows="2" placeholder="One per line, e.g. 2026-10-20 14:00 technical round">{{ app_row.interview_dates if app_row else '' }}</textarea></label>
+    <label class="field"><span>Recruiter notes</span><textarea name="recruiter_notes" rows="3">{{ app_row.recruiter_notes if app_row else '' }}</textarea></label>
+    <label class="field"><span>Personal notes</span><textarea name="notes" rows="4">{{ app_row.notes if app_row else '' }}</textarea></label>
+    <datalist id="country-list">{% for c in all_countries() %}<option value="{{ c.name }}">{% endfor %}</datalist>
+    <div class="actions"><button class="btn btn-primary" type="submit">{{ 'Save changes' if app_row else 'Add application' }}</button></div>
+  </form>
+
+  {% if app_row %}
+  <aside class="stack">
+    <section class="panel">
+      <h2>History</h2>
+      <ol class="timeline">
+        {% for e in app_row.events|reverse %}
+        <li><span class="strong">{{ e.to_status }}</span>{% if e.from_status %} <span class="muted small">from {{ e.from_status }}</span>{% endif %}
+          <div class="muted small"><time datetime="{{ iso(e.at) }}">{{ fmt_dt(e.at) }}</time>{% if e.note %} · {{ e.note }}{% endif %}</div></li>
+        {% else %}<li class="muted small">No history yet.</li>{% endfor %}
+      </ol>
+    </section>
+    <section class="panel danger-zone">
+      <h2>Delete record</h2>
+      <p class="muted small">Removes this tracking record and its history. The job listing itself is not affected.</p>
+      <form method="post" action="/applications/{{ app_row.id }}/delete" class="form-tight">
+        <label class="field compact"><span>Type DELETE to confirm</span><input type="text" name="confirm" autocomplete="off" pattern="DELETE" required></label>
+        <button class="btn btn-danger btn-sm" type="submit"><svg class="i"><use href="#i-trash"/></svg>Delete</button>
+      </form>
+    </section>
+  </aside>
+  {% endif %}
+</div>
+{% endblock %}

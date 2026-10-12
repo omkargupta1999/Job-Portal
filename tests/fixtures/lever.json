@@ -1,0 +1,51 @@
+[
+ {
+  "id": "aaaa-1111",
+  "text": "Kubernetes Engineer",
+  "categories": {
+   "location": "Pune, India",
+   "commitment": "Full-time",
+   "team": "Platform",
+   "department": "Engineering",
+   "allLocations": [
+    "Pune, India",
+    "Mumbai, India"
+   ]
+  },
+  "country": "IN",
+  "workplaceType": "hybrid",
+  "createdAt": 1759900000000,
+  "description": "<div>Run OpenShift and Kubernetes clusters.</div>",
+  "descriptionPlain": "Run OpenShift and Kubernetes clusters.",
+  "lists": [
+   {
+    "text": "Requirements",
+    "content": "<li>Helm and Terraform</li><li>4+ years of experience</li>"
+   }
+  ],
+  "additional": "<div>Equal opportunity employer.</div>",
+  "hostedUrl": "https://jobs.lever.co/samplesite/aaaa-1111",
+  "applyUrl": "https://jobs.lever.co/samplesite/aaaa-1111/apply",
+  "salaryRange": {
+   "currency": "INR",
+   "interval": "per-year-salary",
+   "min": 2500000,
+   "max": 3500000
+  }
+ },
+ {
+  "id": "bbbb-2222",
+  "text": "Build & Release Engineer",
+  "categories": {
+   "location": "Remote",
+   "commitment": "Contract",
+   "team": "Release"
+  },
+  "country": null,
+  "workplaceType": "remote",
+  "description": "<div>Jenkins, Maven, Artifactory.</div>",
+  "lists": [],
+  "hostedUrl": "https://jobs.lever.co/samplesite/bbbb-2222",
+  "applyUrl": "javascript:alert(1)"
+ }
+]

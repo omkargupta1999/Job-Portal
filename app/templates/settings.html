@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Settings</h1>
+    <p class="muted">Values saved here override the defaults from the environment (.env). Secrets are only read from the environment.</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <form method="post" action="/settings" class="stack">
+    <section class="panel">
+      <h2>Synchronisation</h2>
+      <div class="form-grid two">
+        <label class="field"><span>Sync interval (hours)</span><input type="number" name="sync_interval_hours" min="0.5" max="168" step="0.5" value="{{ rt.sync_interval_hours }}" required></label>
+        <label class="field"><span>Max jobs per source</span><input type="number" name="max_jobs_per_source" min="1" max="10000" value="{{ rt.max_jobs_per_source }}" required></label>
+        <label class="field"><span>Delete expired, untouched listings after (days, 0 = keep)</span><input type="number" name="expired_retention_days" min="0" max="3650" value="{{ rt.expired_retention_days }}" required></label>
+        <label class="field"><span>“New job” window (days)</span><input type="number" name="new_job_days" min="1" max="30" value="{{ rt.new_job_days }}" required></label>
+        <label class="field"><span>Results per page</span><input type="number" name="page_size" min="10" max="100" value="{{ rt.page_size }}" required></label>
+      </div>
+      <p class="hint-text">Automatic sync: {% if sync.scheduler_active %}on{% if sync.next_run_at %}, next run <time datetime="{{ iso(sync.next_run_at) }}" data-relative>{{ fmt_dt(sync.next_run_at) }}</time>{% endif %}{% else %}off (JOBHUB_SCHEDULER_ENABLED=false or another instance owns the scheduler){% endif %}. Source-specific minimum intervals (e.g. 6 h for Remotive) always apply. Saved/applied jobs are never purged.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Matching weights</h2>
+      <p class="muted small">Relative importance of each component. Weights are normalised, so only their proportions matter.</p>
+      <div class="weights">
+        {% for key, w in rt.match_weights.items() %}
+        <label class="weight"><span>{{ COMPONENT_LABELS[key] }}</span>
+          <input type="range" name="w_{{ key }}" min="0" max="100" step="5" value="{{ w }}" data-output="out-{{ key }}">
+          <output id="out-{{ key }}">{{ w }}</output></label>
+        {% endfor %}
+      </div>
+      <label class="check"><input type="checkbox" name="strict_location" {% if rt.strict_location %}checked{% endif %}><span>Cap scores at 45 for jobs clearly outside my preferred locations</span></label>
+    </section>
+    <div class="sticky-actions"><span></span><button class="btn btn-primary" type="submit"><svg class="i"><use href="#i-check"/></svg>Save settings</button></div>
+  </form>
+
+  <aside class="stack">
+    <section class="panel">
+      <h2>Appearance</h2>
+      <div class="segmented" role="group" aria-label="Theme">
+        <button type="button" class="seg" data-theme-set="light">Light</button>
+        <button type="button" class="seg" data-theme-set="dark">Dark</button>
+        <button type="button" class="seg" data-theme-set="system">System</button>
+      </div>
+      <p class="hint-text">Stored in this browser.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Database & backups</h2>
+      <dl class="facts">
+        <dt>Database</dt><dd class="mono">{{ settings.db_path }}</dd>
+        <dt>Size</dt><dd>{{ (db_size / 1048576)|round(2) }} MB · {{ job_total }} jobs</dd>
+        <dt>Schema version</dt><dd>{{ schema_version }}</dd>
+      </dl>
+      <form method="post" action="/settings/backup" class="inline"><button class="btn btn-secondary btn-sm" type="submit"><svg class="i"><use href="#i-download"/></svg>Create backup now</button></form>
+      <form method="post" action="/settings/rescore" class="inline"><button class="btn btn-ghost btn-sm" type="submit">Re-score all jobs</button></form>
+      {% if backups %}
+      <ul class="list">
+        {% for b in backups[:10] %}<li class="list-row"><div><a class="mono small" href="/settings/backups/{{ b.name }}">{{ b.name }}</a><div class="muted small">{{ (b.size / 1048576)|round(2) }} MB</div></div></li>{% endfor %}
+      </ul>
+      {% endif %}
+      <p class="hint-text">Restoring is a CLI-only operation (it replaces the live database): stop JobHub, then run <code>docker compose run --rm jobhub python -m app.cli restore &lt;file&gt;</code>. See README.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Recent sync runs</h2>
+      <ul class="list">
+        {% for r in runs %}
+        <li class="list-row"><div><span class="strong">{{ r.trigger|capitalize }}</span> <span class="badge tone-{{ {'success': 'success', 'partial': 'progress', 'failed': 'danger', 'running': 'info'}.get(r.status, 'muted') }}">{{ r.status }}</span>
+          <div class="muted small"><time datetime="{{ iso(r.started_at) }}" data-relative>{{ fmt_dt(r.started_at) }}</time> · {{ r.message[:240] }}</div></div></li>
+        {% else %}<li class="muted small">No runs yet.</li>{% endfor %}
+      </ul>
+    </section>
+  </aside>
+</div>
+{% endblock %}

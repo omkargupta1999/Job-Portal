@@ -1,0 +1,130 @@
+{# Shared filter form. Expects: filters, sources, currencies, form_action #}
+<form class="filters" method="get" action="{{ form_action }}" id="filter-form" aria-label="Job filters">
+  <div class="filters-head">
+    <h2><svg class="i"><use href="#i-filter"/></svg>Filters{% if filters.active_count() %} <span class="nav-count">{{ filters.active_count() }}</span>{% endif %}</h2>
+    <a class="link small" href="{{ form_action }}?reset=1" id="clear-filters">Clear all</a>
+  </div>
+  <input type="hidden" name="sort" value="{{ filters.sort }}">
+
+  <label class="field"><span>Keywords</span><input type="search" name="q" value="{{ filters.q }}" placeholder="e.g. kubernetes terraform"></label>
+  <label class="field"><span>Job title</span><input type="text" name="title" value="{{ filters.title }}" placeholder="e.g. DevOps"></label>
+  <label class="field"><span>Skills <em class="muted">(comma separated)</em></span><input type="text" name="skills" value="{{ filters.skills }}" placeholder="Kubernetes, GitLab CI/CD"></label>
+
+  <fieldset class="field">
+    <legend>Country</legend>
+    <div class="quick-row">
+      <a class="pill pill-sm{% if filters.countries == ['IN'] %} is-on{% endif %}" href="{{ form_action }}?countries=IN">India only</a>
+      <a class="pill pill-sm{% if filters.location_type == ['remote_worldwide'] %} is-on{% endif %}" href="{{ form_action }}?location_type=remote_worldwide">Remote worldwide</a>
+    </div>
+    <details class="combo" id="country-combo"{% if filters.countries %} open{% endif %}>
+      <summary><span class="combo-label">{% if not filters.countries %}All countries{% elif filters.countries|length <= 3 %}{% for cc in filters.countries %}{{ country_name(cc) }}{% if not loop.last %}, {% endif %}{% endfor %}{% else %}{{ filters.countries|length }} countries{% endif %}</span><svg class="i"><use href="#i-chevron-down"/></svg></summary>
+      <div class="combo-panel">
+        <input type="search" class="combo-search" placeholder="Search countries…" aria-label="Search countries">
+        <div class="combo-group-label">Popular</div>
+        <div class="combo-list">
+          {% for cc in QUICK_COUNTRIES %}
+          <label class="check"><input type="checkbox" name="countries" value="{{ cc }}" {% if cc in filters.countries %}checked{% endif %}><span>{{ country_name(cc) }}</span><span class="code">{{ cc }}</span></label>
+          {% endfor %}
+        </div>
+        <div class="combo-group-label">All countries</div>
+        <div class="combo-list combo-all">
+          {% for c in all_countries() %}{% if c.code not in QUICK_COUNTRIES %}
+          <label class="check" data-name="{{ c.name|lower }} {{ c.iso_name|lower }} {{ c.code|lower }}"><input type="checkbox" name="countries" value="{{ c.code }}" {% if c.code in filters.countries %}checked{% endif %}><span>{{ c.name }}</span><span class="code">{{ c.code }}</span></label>
+          {% endif %}{% endfor %}
+        </div>
+      </div>
+    </details>
+    {% if filters.countries %}<div class="chips chips-tight">{% for cc in filters.countries %}<span class="chip">{{ country_name(cc) }}</span>{% endfor %}</div>{% endif %}
+    <label class="check"><input type="checkbox" name="include_worldwide" value="1" {% if filters.include_worldwide %}checked{% endif %}><span>Also include remote-worldwide jobs</span></label>
+  </fieldset>
+
+  <div class="form-grid two">
+    <label class="field"><span>City</span><input type="text" name="city" value="{{ filters.city }}" placeholder="Pune"></label>
+    <label class="field"><span>State / region</span><input type="text" name="region" value="{{ filters.region }}" placeholder="Maharashtra"></label>
+  </div>
+
+  <fieldset class="field">
+    <legend>Work mode</legend>
+    <div class="check-row">
+      {% for m in ['remote', 'hybrid', 'onsite', 'unknown'] %}
+      <label class="check"><input type="checkbox" name="work_mode" value="{{ m }}" {% if m in filters.work_mode %}checked{% endif %}><span>{{ WORK_MODE_LABELS[m] }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend>Location type</legend>
+    {% for t in LOCATION_TYPES %}
+    <label class="check"><input type="checkbox" name="location_type" value="{{ t }}" {% if t in filters.location_type %}checked{% endif %}><span>{{ LOCATION_TYPE_LABELS[t] }}</span></label>
+    {% endfor %}
+    <label class="field compact"><span>Remote restricted to</span>
+      <select name="remote_country">
+        <option value="">Any country</option>
+        {% for c in all_countries() %}<option value="{{ c.code }}" {% if filters.remote_country == c.code %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend>Salary (annualised)</legend>
+    <div class="form-grid two">
+      <input type="number" name="salary_min" min="0" step="1000" value="{{ filters.salary_min if filters.salary_min is not none else '' }}" placeholder="Min" aria-label="Minimum salary">
+      <input type="number" name="salary_max" min="0" step="1000" value="{{ filters.salary_max if filters.salary_max is not none else '' }}" placeholder="Max" aria-label="Maximum salary">
+    </div>
+    <select name="currency" aria-label="Salary currency">
+      <option value="">Any currency</option>
+      {% for c in currencies %}<option value="{{ c }}" {% if filters.currency == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+    <p class="hint-text">Only jobs that state a salary are matched by salary filters.</p>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend>Experience</legend>
+    <div class="check-row">
+      {% for lv in LEVELS %}<label class="check"><input type="checkbox" name="level" value="{{ lv }}" {% if lv in filters.level %}checked{% endif %}><span>{{ LEVEL_LABELS[lv] }}</span></label>{% endfor %}
+    </div>
+    <div class="form-grid two">
+      <label class="field compact"><span>Min years required</span><input type="number" name="exp_min" min="0" max="30" value="{{ filters.exp_min if filters.exp_min is not none else '' }}"></label>
+      <label class="field compact"><span>Max years required</span><input type="number" name="exp_max" min="0" max="30" value="{{ filters.exp_max if filters.exp_max is not none else '' }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset class="field">
+    <legend>Employment type</legend>
+    <div class="check-row">
+      {% for e in EMPLOYMENT_TYPES %}<label class="check"><input type="checkbox" name="employment" value="{{ e }}" {% if e in filters.employment %}checked{% endif %}><span>{{ EMPLOYMENT_LABELS[e] }}</span></label>{% endfor %}
+    </div>
+  </fieldset>
+
+  <label class="field"><span>Company</span><input type="text" name="company" value="{{ filters.company }}"></label>
+
+  <fieldset class="field">
+    <legend>Source</legend>
+    {% for src in sources %}<label class="check"><input type="checkbox" name="source" value="{{ src.id }}" {% if src.id|string in filters.source %}checked{% endif %}><span>{{ src.name }}</span></label>{% endfor %}
+  </fieldset>
+
+  <label class="field"><span>Date posted</span>
+    <select name="posted_within">
+      <option value="">Any time</option>
+      {% for k, label in POSTED_WITHIN.items() %}<option value="{{ k }}" {% if filters.posted_within|string == k %}selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+  </label>
+
+  <label class="field"><span>Minimum match score: <output id="min-score-out">{{ filters.min_score if filters.min_score is not none else 0 }}</output></span>
+    <input type="range" name="min_score" min="0" max="100" step="5" value="{{ filters.min_score if filters.min_score is not none else 0 }}" data-output="min-score-out">
+  </label>
+
+  <fieldset class="field">
+    <legend>More</legend>
+    <label class="check"><input type="checkbox" name="visa" value="1" {% if filters.visa %}checked{% endif %}><span>Mentions visa sponsorship</span></label>
+    <label class="check"><input type="checkbox" name="relocation" value="1" {% if filters.relocation %}checked{% endif %}><span>Mentions relocation assistance</span></label>
+    {% if form_action != '/saved' %}<label class="check"><input type="checkbox" name="saved" value="1" {% if filters.saved %}checked{% endif %}><span>Saved jobs only</span></label>{% endif %}
+    <label class="check"><input type="checkbox" name="unapplied" value="1" {% if filters.unapplied %}checked{% endif %}><span>Not yet applied</span></label>
+    <label class="check"><input type="checkbox" name="new" value="1" {% if filters.new %}checked{% endif %}><span>Newly discovered</span></label>
+    <label class="check"><input type="checkbox" name="include_expired" value="1" {% if filters.include_expired %}checked{% endif %}><span>Include expired listings</span></label>
+  </fieldset>
+
+  <div class="filters-actions">
+    <button type="submit" class="btn btn-primary btn-block">Apply filters</button>
+  </div>
+</form>

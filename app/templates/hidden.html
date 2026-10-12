@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_card, empty %}
+{% block title %}Hidden Jobs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <a class="back" href="/discover"><svg class="i"><use href="#i-chevron-left"/></svg>Discover</a>
+    <h1>Hidden Jobs</h1>
+    <p class="muted">{{ page.total }} hidden job{{ '' if page.total == 1 else 's' }}. Restore a job to show it in search results again.</p>
+  </div>
+</div>
+<section class="results results-full">
+  {% if page.items %}
+    <div class="stack">
+      {% set here = "/hidden?" ~ filters.query_string() %}
+      {% for job in page.items %}{{ job_card(job, new_cutoff, here) }}{% endfor %}
+    </div>
+    {% set base_path = "/hidden" %}{% include "partials/pager.html" %}
+  {% else %}
+    {% call empty("Nothing hidden", "Jobs you hide are listed here.", "eye-off") %}{% endcall %}
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,11 @@
+# Runtime dependencies (pinned to the versions the test suite was run against)
+fastapi==0.143.0
+starlette==1.6.0
+uvicorn==0.53.0
+SQLAlchemy==2.1.4
+Jinja2==3.1.6
+httpx==0.28.1
+python-multipart==0.0.32
+nh3==0.3.7
+pypdf==6.17.0
+python-docx==1.2.0

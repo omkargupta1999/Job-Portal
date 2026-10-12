@@ -1,0 +1,28 @@
+{
+ "data": [
+  {
+   "slug": "platform-engineer-munich-789",
+   "company_name": "Bavaria Systems AG",
+   "title": "Platform Engineer",
+   "description": "<p>Build our internal platform on OpenShift and Argo CD. Hybrid work, 3 days in office.</p><p>3-5 years experience.</p>",
+   "remote": false,
+   "url": "https://www.arbeitnow.com/jobs/companies/bavaria/platform-engineer-munich-789",
+   "tags": [],
+   "job_types": [
+    "full time"
+   ],
+   "location": "Munich",
+   "created_at": 1760200000
+  }
+ ],
+ "links": {
+  "first": "https://www.arbeitnow.com/api/job-board-api?page=1",
+  "last": null,
+  "prev": "https://www.arbeitnow.com/api/job-board-api?page=1",
+  "next": null
+ },
+ "meta": {
+  "current_page": 2,
+  "per_page": 100
+ }
+}

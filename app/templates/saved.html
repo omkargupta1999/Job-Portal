@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_card, empty %}
+{% block title %}Saved Jobs{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Saved Jobs</h1>
+    <p class="muted">{{ page.total }} saved job{{ '' if page.total == 1 else 's' }}. Saved jobs are kept even after a listing expires.</p>
+  </div>
+</div>
+<div class="with-filters">
+  <details class="filters-toggle">
+    <summary class="btn btn-secondary btn-sm"><svg class="i"><use href="#i-filter"/></svg>Filters</summary>
+    {% set form_action = "/saved" %}
+    {% include "partials/filters.html" %}
+  </details>
+  <section class="results">
+    {% if page.items %}
+      <div class="stack">
+        {% set here = "/saved?" ~ filters.query_string() %}
+        {% for job in page.items %}{{ job_card(job, new_cutoff, here) }}{% endfor %}
+      </div>
+      {% set base_path = "/saved" %}{% include "partials/pager.html" %}
+    {% else %}
+      {% call empty("No saved jobs", "Use the bookmark button on any job to keep it here for later.", "bookmark") %}
+        <div class="actions center"><a class="btn btn-primary btn-sm" href="/discover">Discover jobs</a></div>
+      {% endcall %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==9.1.1
+ruff==0.17.0
+# Only needed to regenerate app/data/geo.json (scripts/gen_countries.py)
+pycountry==26.2.16

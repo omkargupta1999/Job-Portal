@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Resume & Profile{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Resume & Profile</h1>
+    <p class="muted">The matching engine reads this saved profile. Changes re-score all jobs in the background.</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <form method="post" action="/profile" class="stack" id="profile-form">
+    <section class="panel">
+      <h2>About you</h2>
+      <div class="form-grid two">
+        <label class="field"><span>Full name</span><input type="text" name="full_name" maxlength="200" value="{{ profile.full_name }}" autocomplete="name"></label>
+        <label class="field"><span>Headline</span><input type="text" name="headline" maxlength="300" value="{{ profile.headline }}"></label>
+        <label class="field"><span>Email</span><input type="email" name="email" maxlength="200" value="{{ profile.email }}" autocomplete="email"></label>
+        <label class="field"><span>Phone</span><input type="tel" name="phone" maxlength="50" value="{{ profile.phone }}" autocomplete="tel"></label>
+        <label class="field"><span>Current location</span><input type="text" name="current_location" maxlength="200" value="{{ profile.current_location }}"></label>
+        <label class="field"><span>Years of experience</span><input type="number" name="years_experience" min="0" max="60" step="0.5" value="{{ profile.years_experience if profile.years_experience is not none else '' }}"></label>
+      </div>
+      <p class="hint-text">Name, email and phone are only used in cover-letter drafts and never leave this machine.</p>
+      <label class="field"><span>Professional summary</span><textarea name="summary" rows="7">{{ profile.summary }}</textarea></label>
+      <label class="field"><span>Experience highlights <em class="muted">(projects, domains — used in drafts)</em></span><textarea name="experience_notes" rows="3">{{ profile.experience_notes }}</textarea></label>
+    </section>
+
+    <section class="panel">
+      <h2>Skills & credentials</h2>
+      <label class="field"><span>Skills <em class="muted">(one per line or comma separated; aliases such as “k8s” are normalised)</em></span>
+        <textarea name="skills" rows="6" >{{ profile.skills|join('\n') }}</textarea></label>
+      <label class="field"><span>Skills you want to use more <em class="muted">(optional)</em></span><textarea name="preferred_skills" rows="2">{{ profile.preferred_skills|join('\n') }}</textarea></label>
+      <div class="form-grid two">
+        <label class="field"><span>Certifications</span><textarea name="certifications" rows="4">{{ profile.certifications|join('\n') }}</textarea></label>
+        <label class="field"><span>Education</span><textarea name="education" rows="4">{{ profile.education|join('\n') }}</textarea></label>
+      </div>
+      <details class="hint-details"><summary>Recognised skill names</summary><p class="small muted">{{ skill_names|join(' · ') }}</p></details>
+    </section>
+
+    <section class="panel">
+      <h2>Target roles</h2>
+      <div class="form-grid two">
+        <label class="field"><span>Preferred job titles</span><textarea name="target_titles" rows="8">{{ profile.target_titles|join('\n') }}</textarea></label>
+        <label class="field"><span>Titles you have held</span><textarea name="past_titles" rows="8">{{ profile.past_titles|join('\n') }}</textarea></label>
+      </div>
+      <p class="hint-text">Titles are compared by role family, so “Platform Reliability Engineer” still scores well against “Site Reliability Engineer”.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Location & work preferences</h2>
+      <fieldset class="field">
+        <legend>Preferred countries</legend>
+        <details class="combo">
+          <summary><span class="combo-label">{{ profile.preferred_countries|length }} selected</span><svg class="i"><use href="#i-chevron-down"/></svg></summary>
+          <div class="combo-panel">
+            <input type="search" class="combo-search" placeholder="Search countries…" aria-label="Search countries">
+            <div class="combo-list combo-all">
+              {% for c in all_countries() %}
+              <label class="check" data-name="{{ c.name|lower }} {{ c.iso_name|lower }} {{ c.code|lower }}"><input type="checkbox" name="preferred_countries" value="{{ c.code }}" {% if c.code in profile.preferred_countries %}checked{% endif %}><span>{{ c.name }}</span><span class="code">{{ c.code }}</span></label>
+              {% endfor %}
+            </div>
+          </div>
+        </details>
+        <div class="chips chips-tight">{% for cc in profile.preferred_countries %}<span class="chip">{{ country_name(cc) }}</span>{% endfor %}</div>
+      </fieldset>
+      <label class="field"><span>Preferred cities</span><textarea name="preferred_cities" rows="3">{{ profile.preferred_cities|join('\n') }}</textarea></label>
+      <fieldset class="field">
+        <legend>Acceptable work modes</legend>
+        <div class="check-row">
+          {% for m in ['remote', 'hybrid', 'onsite'] %}<label class="check"><input type="checkbox" name="work_modes" value="{{ m }}" {% if m in profile.work_modes %}checked{% endif %}><span>{{ WORK_MODE_LABELS[m] }}</span></label>{% endfor %}
+        </div>
+        <label class="check"><input type="checkbox" name="remote_worldwide_ok" {% if profile.remote_worldwide_ok %}checked{% endif %}><span>Include “remote worldwide” jobs as a location match</span></label>
+      </fieldset>
+      <fieldset class="field">
+        <legend>Employment types</legend>
+        <div class="check-row">
+          {% for e in EMPLOYMENT_TYPES %}<label class="check"><input type="checkbox" name="employment_types" value="{{ e }}" {% if e in profile.employment_types %}checked{% endif %}><span>{{ EMPLOYMENT_LABELS[e] }}</span></label>{% endfor %}
+        </div>
+      </fieldset>
+      <div class="form-grid three">
+        <label class="field"><span>Minimum salary (annual)</span><input type="number" name="salary_min" min="0" step="1000" value="{{ profile.salary_min or '' }}"></label>
+        <label class="field"><span>Currency</span><input type="text" name="salary_currency" maxlength="3" value="{{ profile.salary_currency }}" placeholder="INR"></label>
+        <label class="field"><span>Open to relocation</span>
+          <select name="open_to_relocation"><option value="">Not specified</option><option value="yes" {% if profile.open_to_relocation == true %}selected{% endif %}>Yes</option><option value="no" {% if profile.open_to_relocation == false %}selected{% endif %}>No</option></select></label>
+        <label class="field"><span>Notice period</span><input type="text" name="notice_period" maxlength="100" value="{{ profile.notice_period }}" placeholder="e.g. 60 days"></label>
+        <label class="field span-2"><span>Work authorisation</span><input type="text" name="work_authorization" maxlength="300" value="{{ profile.work_authorization }}" placeholder="e.g. Indian citizen; no sponsorship needed in India"></label>
+      </div>
+    </section>
+    <div class="sticky-actions"><span class="muted small">Last saved {{ fmt_dt(profile.updated_at) }}</span><button class="btn btn-primary" type="submit"><svg class="i"><use href="#i-check"/></svg>Save profile</button></div>
+  </form>
+
+  <aside class="stack">
+    <section class="panel" id="resume">
+      <h2>Resume</h2>
+      <form method="post" action="/profile/resume" enctype="multipart/form-data" class="upload">
+        <label class="dropzone">
+          <svg class="i"><use href="#i-upload"/></svg>
+          <span><strong>Choose a file</strong> or drop it here</span>
+          <span class="muted small">PDF, DOCX or TXT · max {{ max_upload_mb }} MB · stored privately</span>
+          <input type="file" name="file" accept=".pdf,.docx,.txt,application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+        </label>
+        <button class="btn btn-secondary btn-sm btn-block" type="submit">Upload & extract</button>
+      </form>
+
+      {% if review and review.extracted %}
+      {% set ex = review.extracted %}
+      <div class="review">
+        <h3 class="sub">Extracted from {{ review.original_filename }}</h3>
+        <p class="hint-text">Automated extraction is approximate. Tick what you want to merge, then fine-tune the profile form.</p>
+        <form method="post" action="/profile/resume/{{ review.id }}/merge">
+          {% if ex.skills %}<label class="check"><input type="checkbox" name="fields" value="skills" checked><span>Add skills: {{ ex.skills|join(', ') }}</span></label>{% endif %}
+          {% if ex.titles %}<label class="check"><input type="checkbox" name="fields" value="titles" checked><span>Add held titles: {{ ex.titles|join(', ') }}</span></label>{% endif %}
+          {% if ex.certifications %}<label class="check"><input type="checkbox" name="fields" value="certifications" checked><span>Add certifications: {{ ex.certifications|join('; ') }}</span></label>{% endif %}
+          {% if ex.education %}<label class="check"><input type="checkbox" name="fields" value="education"><span>Add education: {{ ex.education|join('; ') }}</span></label>{% endif %}
+          {% if ex.years_experience %}<label class="check"><input type="checkbox" name="fields" value="years_experience"><span>Set experience to {{ ex.years_experience }} years</span></label>{% endif %}
+          {% if ex.summary %}<label class="check"><input type="checkbox" name="fields" value="summary"><span>Replace summary with: “{{ ex.summary[:220] }}{% if ex.summary|length > 220 %}…{% endif %}”</span></label>{% endif %}
+          <button class="btn btn-primary btn-sm" type="submit">Merge selected</button>
+        </form>
+      </div>
+      {% elif review %}
+      <p class="muted small">No text could be extracted from {{ review.original_filename }}. Scanned PDFs need OCR, which JobHub does not perform; please edit the profile manually.</p>
+      {% endif %}
+
+      {% if resumes %}
+      <ul class="list">
+        {% for r in resumes %}
+        <li class="list-row">
+          <div><a href="/profile/resume/{{ r.id }}/download" class="strong">{{ r.original_filename }}</a>
+            <div class="muted small">{{ r.file_type|upper }} · {{ (r.size_bytes / 1024)|round(0)|int }} KB · {{ fmt_date(r.uploaded_at) }}{% if r.is_active %} · current{% endif %}</div></div>
+          <div class="right">
+            <a class="icon-btn" href="/profile?review={{ r.id }}#resume" title="Review extraction" aria-label="Review extraction"><svg class="i"><use href="#i-eye"/></svg></a>
+            <form method="post" action="/profile/resume/{{ r.id }}/delete" class="inline"><input type="hidden" name="confirm" value="yes">
+              <button class="icon-btn" type="submit" title="Delete" aria-label="Delete resume" data-confirm="Delete this resume file permanently?"><svg class="i"><use href="#i-trash"/></svg></button></form>
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+
+    <section class="panel">
+      <h2>Search other job sites</h2>
+      <p class="hint-text">These sites have no authorised integration. Links open their own search pages with your target titles and cities; JobHub does not fetch or scrape them.</p>
+      {% for site in search_links %}
+      <details class="search-site">
+        <summary><span class="strong">{{ site.name }}</span><span class="badge tone-muted">link only</span></summary>
+        <ul class="link-list">{% for l in site.links %}<li><a href="{{ l.url }}" target="_blank" rel="noopener noreferrer">{{ l.label }}<svg class="i"><use href="#i-external"/></svg></a></li>{% endfor %}</ul>
+      </details>
+      {% endfor %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

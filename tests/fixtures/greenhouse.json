@@ -1,0 +1,58 @@
+{
+ "jobs": [
+  {
+   "id": 4000001,
+   "internal_job_id": 1,
+   "title": "Senior Site Reliability Engineer",
+   "updated_at": "2026-10-05T12:00:00-04:00",
+   "first_published": "2026-09-30T12:00:00-04:00",
+   "requisition_id": "R1",
+   "location": {
+    "name": "Bengaluru, Karnataka, India"
+   },
+   "absolute_url": "https://boards.greenhouse.io/examplecorp/jobs/4000001",
+   "metadata": null,
+   "company_name": "ExampleCorp",
+   "content": "&lt;p&gt;We use &lt;strong&gt;Kubernetes&lt;/strong&gt;, Terraform, Jenkins and Python.&lt;/p&gt;&lt;h3&gt;Requirements&lt;/h3&gt;&lt;ul&gt;&lt;li&gt;6+ years of SRE experience&lt;/li&gt;&lt;/ul&gt;",
+   "departments": [
+    {
+     "id": 1,
+     "name": "Infrastructure"
+    }
+   ],
+   "offices": [
+    {
+     "id": 1,
+     "name": "Bengaluru"
+    }
+   ]
+  },
+  {
+   "id": 4000002,
+   "title": "DevOps Engineer",
+   "updated_at": "2026-10-06T12:00:00Z",
+   "location": {
+    "name": "Remote - India"
+   },
+   "absolute_url": "https://boards.greenhouse.io/examplecorp/jobs/4000002",
+   "content": "&lt;p&gt;GitLab CI/CD, Docker, AWS. Remote within India.&lt;/p&gt;",
+   "departments": [],
+   "offices": []
+  },
+  {
+   "id": 4000003,
+   "title": "Recruiter",
+   "updated_at": "2026-10-06T12:00:00Z",
+   "location": {
+    "name": "London, UK"
+   },
+   "absolute_url": "https://boards.greenhouse.io/examplecorp/jobs/4000003",
+   "content": "&lt;p&gt;Hire great engineers.&lt;/p&gt;",
+   "departments": [],
+   "offices": []
+  }
+ ],
+ "meta": {
+  "total": 3
+ }
+}

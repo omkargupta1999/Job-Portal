@@ -1,0 +1,23 @@
+[project]
+name = "jobhub"
+version = "1.0.0"
+description = "Self-hosted job discovery and application management"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+# B008: FastAPI's Form()/File() defaults are the documented pattern.
+# S101: asserts are fine in tests. S311: random is not used for security.
+ignore = ["B008", "S101", "S311"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]

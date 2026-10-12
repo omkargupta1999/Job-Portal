@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "macros.html" import source_status %}
+{% block title %}Job Sources{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Job Sources</h1>
+    <p class="muted">Integrations use official public APIs and feeds only. Each source is fetched independently; one failing source never stops the others.</p>
+  </div>
+</div>
+
+<section class="panel flush">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Source</th><th>Status</th><th class="hide-sm">Last success</th><th class="num hide-sm">Active jobs</th><th class="hide-md">Last run</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>
+      {% for src in sources %}
+      {% set ad = adapters.get(src.adapter) %}
+      <tr>
+        <td><span class="strong">{{ src.name }}</span>
+          <div class="muted small">{{ ad.description if ad else src.adapter }}</div>
+          {% if src.last_error and src.status == 'error' %}<div class="error-text small">{{ src.last_error }}</div>{% endif %}
+          {% if ad and ad.terms_note %}<div class="muted small">{{ ad.terms_note }}</div>{% endif %}
+        </td>
+        <td>{{ source_status(src) }}</td>
+        <td class="hide-sm">{% if src.last_success_at %}<time datetime="{{ iso(src.last_success_at) }}" data-relative>{{ fmt_dt(src.last_success_at) }}</time>{% else %}<span class="muted">Never</span>{% endif %}</td>
+        <td class="num hide-sm">{{ active_counts.get(src.id, 0) }}<span class="muted small"> / {{ total_counts.get(src.id, 0) }}</span></td>
+        <td class="hide-md small muted">{% set c = src.last_counts or {} %}{% if c %}{{ c.fetched or 0 }} fetched · {{ c.added or 0 }} new · {{ c.updated or 0 }} updated · {{ c.unchanged or 0 }} unchanged{% if c.duplicates %} · {{ c.duplicates }} duplicates{% endif %} · {{ c.expired or 0 }} expired{% if not c.complete %} · partial listing{% endif %}{% else %}—{% endif %}</td>
+        <td class="right nowrap">
+          <form method="post" action="/sources/{{ src.id }}/sync" class="inline js-source-sync"><button class="btn btn-ghost btn-sm" type="submit" {% if not src.enabled %}disabled{% endif %}><svg class="i"><use href="#i-refresh"/></svg>Refresh</button></form>
+          <form method="post" action="/sources/{{ src.id }}/toggle" class="inline"><button class="btn btn-ghost btn-sm" type="submit">{{ 'Disable' if src.enabled else 'Enable' }}</button></form>
+          {% if not total_counts.get(src.id) %}<form method="post" action="/sources/{{ src.id }}/delete" class="inline"><button class="icon-btn" type="submit" aria-label="Remove source" title="Remove" data-confirm="Remove this source?"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No sources configured.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <h2>Add a company board</h2>
+    <p class="muted small">Many employers host their careers page on Greenhouse or Lever, which offer public, credential-free job APIs. Enter the company's board identifier (or paste its careers URL).</p>
+    <form method="post" action="/sources" class="form">
+      <label class="field"><span>Platform</span>
+        <select name="adapter">
+          {% for key, ad in adapters.items() if ad.requires_identifier %}<option value="{{ key }}">{{ ad.display_name }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Board identifier</span><input type="text" name="identifier" required maxlength="300" placeholder="e.g. gitlab  or  https://boards.greenhouse.io/gitlab"></label>
+      <ul class="hint-list small muted">
+        <li><strong>Greenhouse</strong>: boards.greenhouse.io/<em>token</em> or job-boards.greenhouse.io/<em>token</em></li>
+        <li><strong>Lever</strong>: jobs.lever.co/<em>site</em> (EU accounts: jobs.eu.lever.co/<em>site</em> → “Lever (EU)”)</li>
+      </ul>
+      <button class="btn btn-primary btn-sm" type="submit"><svg class="i"><use href="#i-plus"/></svg>Add source</button>
+    </form>
+    {% set missing = [] %}
+    {% for key, ad in adapters.items() if not ad.requires_identifier %}{% if not (sources|selectattr('adapter', 'equalto', key)|list) %}{% set _ = missing.append(key) %}{% endif %}{% endfor %}
+    {% if missing %}
+    <form method="post" action="/sources" class="form-inline">
+      <select name="adapter" aria-label="Feed">{% for key in missing %}<option value="{{ key }}">{{ adapters[key].display_name }}</option>{% endfor %}</select>
+      <button class="btn btn-secondary btn-sm" type="submit">Add feed</button>
+    </form>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <h2>Sites without an integration</h2>
+    <p class="muted small">These popular sites do not offer an API that individuals may use, and their terms prohibit automated scraping. JobHub does not access them. Use the search links on the <a class="link" href="/profile">profile page</a>, then add interesting roles to the tracker manually.</p>
+    <ul class="list">
+      {% for site in search_sites %}
+      <li class="list-row"><div><span class="strong">{{ site.name }}</span><div class="muted small">{{ site.note }}</div></div><span class="badge tone-muted">Not supported</span></li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

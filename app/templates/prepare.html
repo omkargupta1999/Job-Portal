@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "macros.html" import score_badge %}
+{% block title %}Prepare · {{ job.title }}{% endblock %}
+{% block content %}
+{% set data = prep if prep else draft %}
+<a class="back" href="/jobs/{{ job.id }}"><svg class="i"><use href="#i-chevron-left"/></svg>{{ job.title }}</a>
+<div class="page-head">
+  <div>
+    <h1>Prepare application</h1>
+    <p class="muted">{{ job.title }} · {{ job.company }} · match {{ job.match_score }}%</p>
+  </div>
+  <div class="head-actions">
+    {% if prep %}
+    <a class="btn btn-ghost btn-sm" href="/jobs/{{ job.id }}/prepare/download?format=txt"><svg class="i"><use href="#i-download"/></svg>.txt</a>
+    <a class="btn btn-ghost btn-sm" href="/jobs/{{ job.id }}/prepare/download?format=docx"><svg class="i"><use href="#i-download"/></svg>.docx</a>
+    {% endif %}
+    {% if job.apply_url %}<a class="btn btn-primary btn-sm" href="/jobs/{{ job.id }}/apply" target="_blank" rel="noopener noreferrer" data-apply="{{ job.id }}" data-next="/jobs/{{ job.id }}/prepare">Open application<svg class="i"><use href="#i-external"/></svg></a>{% endif %}
+  </div>
+</div>
+
+<div class="draft-banner" role="note"><svg class="i"><use href="#i-alert"/></svg><div><strong>Draft — review before use.</strong> Generated locally from your saved profile and this posting using templates (no external AI service). Text in [square brackets] needs your input. Nothing is claimed that isn't in your profile; check every statement is accurate.</div></div>
+{% if not prep %}<p class="hint-text">This draft has not been saved yet. Edit it and press “Save”.</p>{% endif %}
+
+<form method="post" action="/jobs/{{ job.id }}/prepare" class="prep-form">
+  {% for key, label, rows in [("cover_letter", "Cover letter", 16), ("summary", "Tailored professional summary", 4), ("highlights", "Relevant skill highlights", 7), ("answers", "Answers to common application questions", 12), ("notes", "Application notes", 6)] %}
+  <section class="panel">
+    <div class="panel-head">
+      <h2><label for="f-{{ key }}">{{ label }}</label></h2>
+      <button type="button" class="btn btn-ghost btn-sm" data-copy="f-{{ key }}"><svg class="i"><use href="#i-copy"/></svg>Copy</button>
+    </div>
+    <textarea id="f-{{ key }}" name="{{ key }}" rows="{{ rows }}" class="mono-soft">{{ data[key] if data else '' }}</textarea>
+  </section>
+  {% endfor %}
+  <div class="sticky-actions">
+    <label class="check"><input type="checkbox" name="mark_prepared" value="1" checked><span>Track this job as “Application Prepared”</span></label>
+    <div class="actions">
+      <button class="btn btn-ghost" type="submit" name="action" value="regenerate" data-confirm="Regenerate from your profile? Unsaved edits on this page will be replaced.">Regenerate draft</button>
+      <button class="btn btn-primary" type="submit" name="action" value="save"><svg class="i"><use href="#i-check"/></svg>Save</button>
+    </div>
+  </div>
+</form>
+{% endblock %}

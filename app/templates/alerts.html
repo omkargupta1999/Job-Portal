@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "macros.html" import empty %}
+{% block title %}Job Alerts{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Job Alerts</h1>
+    <p class="muted">Saved searches that are re-evaluated after every sync. New matches show here and in the sidebar badge. Alerts are in-app only; JobHub does not send email.</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <section class="stack">
+    {% for a in alerts %}
+    {% set total, fresh, f = live[a.id] %}
+    <article class="panel alert-card{% if not a.enabled %} is-muted{% endif %}">
+      <div class="alert-head">
+        <div>
+          <h2>{{ a.name }}</h2>
+          <p class="muted small">{% if f.active_count() %}{{ f.active_count() }} filter{{ '' if f.active_count() == 1 else 's' }}{% else %}All jobs{% endif %}
+            {% if f.countries %} · {% for cc in f.countries %}{{ country_name(cc) }}{% if not loop.last %}, {% endif %}{% endfor %}{% endif %}
+            {% if f.min_score %} · score ≥ {{ f.min_score }}{% endif %}{% if f.q %} · “{{ f.q }}”{% endif %}</p>
+        </div>
+        <div class="alert-counts">
+          {% if fresh and a.enabled %}<span class="badge tone-accent">{{ fresh }} new</span>{% endif %}
+          <span class="muted small">{{ total }} matching</span>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn btn-primary btn-sm" href="/alerts/{{ a.id }}/open">View results</a>
+        <form method="post" action="/alerts/{{ a.id }}/toggle" class="inline"><button class="btn btn-ghost btn-sm" type="submit">{{ 'Pause' if a.enabled else 'Resume' }}</button></form>
+        <form method="post" action="/alerts/{{ a.id }}/delete" class="inline"><button class="icon-btn" type="submit" aria-label="Delete alert" data-confirm="Delete this alert?"><svg class="i"><use href="#i-trash"/></svg></button></form>
+        <span class="muted small push">Last checked {% if a.last_evaluated_at %}<time datetime="{{ iso(a.last_evaluated_at) }}" data-relative>{{ fmt_dt(a.last_evaluated_at) }}</time>{% else %}never{% endif %}</span>
+      </div>
+    </article>
+    {% else %}
+      {% call empty("No alerts yet", "Set up filters on Discover Jobs and press “Save as alert”, or create one here.", "bell") %}{% endcall %}
+    {% endfor %}
+  </section>
+
+  <aside>
+    <section class="panel">
+      <h2>New alert</h2>
+      <form method="post" action="/alerts" class="form">
+        <label class="field"><span>Name</span><input type="text" name="name" required maxlength="120" placeholder="e.g. Senior DevOps · India"></label>
+        <label class="field"><span>Filters <em class="muted">(query from Discover)</em></span><input type="text" name="query" value="{{ prefill }}" placeholder="countries=IN&min_score=70"></label>
+        <p class="hint-text">Tip: open Discover Jobs, set filters, then press “Save as alert” — the filters are filled in for you.</p>
+        <div class="quick-row">
+          <button class="pill pill-sm" type="button" data-fill-query="countries=IN&min_score=70">India · score ≥ 70</button>
+          <button class="pill pill-sm" type="button" data-fill-query="location_type=remote_worldwide&min_score=60">Remote worldwide · ≥ 60</button>
+          <button class="pill pill-sm" type="button" data-fill-query="countries=IN&work_mode=remote">Remote India</button>
+        </div>
+        <button class="btn btn-primary btn-sm" type="submit"><svg class="i"><use href="#i-plus"/></svg>Create alert</button>
+      </form>
+    </section>
+  </aside>
+</div>
+{% endblock %}

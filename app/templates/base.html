@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}JobHub{% endblock %} · JobHub</title>
+  <script src="/static/js/theme.js?v={{ app_version }}"></script>
+  <link rel="stylesheet" href="/static/css/app.css?v={{ app_version }}">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+{% include "partials/icons.html" %}
+<a class="skip-link" href="#main">Skip to content</a>
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-hidden="true" tabindex="-1">
+<div class="shell">
+  <aside class="sidebar" aria-label="Primary">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">J</span>
+      <span class="brand-name">JobHub</span>
+      <label for="nav-toggle" class="icon-btn nav-close" aria-label="Close menu"><svg class="i"><use href="#i-x"/></svg></label>
+    </div>
+    <nav class="nav">
+      {% set items = [
+        ("dashboard", "/", "Dashboard", "grid", None),
+        ("discover", "/discover", "Discover Jobs", "search", None),
+        ("saved", "/saved", "Saved Jobs", "bookmark", nav.saved),
+        ("applications", "/applications", "My Applications", "briefcase", nav.applications),
+        ("profile", "/profile", "Resume & Profile", "user", None),
+        ("sources", "/sources", "Job Sources", "layers", None),
+        ("alerts", "/alerts", "Job Alerts", "bell", nav.alerts_new),
+        ("settings", "/settings", "Settings", "sliders", None),
+      ] %}
+      {% for key, href, label, icon, count in items %}
+      <a href="{{ href }}" class="nav-item{% if active == key %} is-active{% endif %}"{% if active == key %} aria-current="page"{% endif %}>
+        <svg class="i"><use href="#i-{{ icon }}"/></svg>
+        <span>{{ label }}</span>
+        {% if count %}<span class="nav-count{% if key == 'alerts' %} is-accent{% endif %}">{{ count }}</span>{% endif %}
+      </a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">
+      <span class="muted small">v{{ app_version }} · self-hosted</span>
+    </div>
+  </aside>
+  <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+
+  <div class="main">
+    <header class="topbar">
+      <label for="nav-toggle" class="icon-btn nav-open" aria-label="Open menu"><svg class="i"><use href="#i-menu"/></svg></label>
+      <form class="top-search" action="/discover" method="get" role="search">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input type="search" name="q" placeholder="Search jobs, companies, skills…" aria-label="Search jobs" value="{{ request.query_params.get('q', '') if active == 'discover' else '' }}">
+      </form>
+      <div class="top-actions">
+        <div class="sync-pill" id="sync-pill" data-running="{{ 'true' if sync.running else 'false' }}" aria-live="polite">
+          <span class="dot"></span>
+          <span class="sync-text" id="sync-text">
+            {% if sync.running %}Syncing…{% elif sync.last_success_at %}Synced <time datetime="{{ iso(sync.last_success_at) }}" data-relative>{{ fmt_dt(sync.last_success_at) }}</time>{% else %}Not synced yet{% endif %}
+          </span>
+        </div>
+        <form action="/api/sync" method="post" class="js-sync-form">
+          <button type="submit" class="btn btn-primary btn-sm" id="fetch-now" {% if sync.running %}disabled{% endif %}>
+            <svg class="i"><use href="#i-refresh"/></svg><span class="hide-sm">Fetch Jobs Now</span>
+          </button>
+        </form>
+        <button type="button" class="icon-btn" id="theme-toggle" aria-label="Toggle dark mode" title="Toggle theme">
+          <svg class="i show-light"><use href="#i-moon"/></svg><svg class="i show-dark"><use href="#i-sun"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="sync-progress" id="sync-progress" hidden>
+      <div class="sync-progress-bar"><span id="sync-progress-fill"></span></div>
+      <span class="small" id="sync-progress-text"></span>
+    </div>
+
+    <main id="main" class="content" tabindex="-1">
+      {% if notice %}<div class="flash flash-ok" role="status"><svg class="i"><use href="#i-check"/></svg>{{ notice }}</div>{% endif %}
+      {% if error %}<div class="flash flash-err" role="alert"><svg class="i"><use href="#i-alert"/></svg>{{ error }}</div>{% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<dialog class="modal" id="apply-modal" aria-labelledby="apply-modal-title">
+  <form method="post" class="modal-body" id="apply-modal-form">
+    <h2 id="apply-modal-title">Did you submit the application?</h2>
+    <p class="muted">The employer's page opened in a new tab. JobHub does not mark a job as applied until you confirm it here.</p>
+    <input type="hidden" name="next" value="">
+    <div class="form-grid two">
+      <label class="field"><span>Application date</span><input type="date" name="applied_on" id="apply-modal-date"></label>
+      <label class="field"><span>Follow-up date</span><input type="date" name="follow_up_date" id="apply-modal-follow"></label>
+    </div>
+    <label class="field"><span>Confirmation reference <em class="muted">(optional)</em></span><input type="text" name="confirmation_ref" maxlength="200"></label>
+    <label class="field"><span>Notes <em class="muted">(optional)</em></span><textarea name="notes" rows="2" maxlength="5000"></textarea></label>
+    <div class="modal-actions">
+      <button type="submit" class="btn btn-primary" name="status" value="Applied"><svg class="i"><use href="#i-check"/></svg>Mark as applied</button>
+      <button type="submit" class="btn btn-secondary" name="status" value="Interested" formnovalidate>Track as interested</button>
+      <button type="button" class="btn btn-ghost" data-close-modal>Not yet</button>
+    </div>
+  </form>
+</dialog>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="/static/js/app.js?v={{ app_version }}" defer></script>
+</body>
+</html>

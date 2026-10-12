@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_card, score_badge, status_badge, source_status, empty, bar %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Dashboard</h1>
+    <p class="muted">
+      {% if sync.last_success_at %}Last successful sync <time datetime="{{ iso(sync.last_success_at) }}" data-relative>{{ fmt_dt(sync.last_success_at) }}</time>{% else %}No successful sync yet{% endif %}
+      {% if sync.next_run_at %} · next <time datetime="{{ iso(sync.next_run_at) }}" data-relative>{{ fmt_dt(sync.next_run_at) }}</time>{% elif not sync.scheduler_active %} · automatic sync is off{% endif %}
+    </p>
+  </div>
+  <div class="quick-filters" aria-label="Quick country filters">
+    <a class="pill" href="/discover?countries=IN">India only{% if country_counts.get('IN') %} <span>{{ country_counts['IN'] }}</span>{% endif %}</a>
+    <a class="pill" href="/discover?location_type=remote_worldwide"><svg class="i"><use href="#i-globe"/></svg>Remote worldwide{% if worldwide %} <span>{{ worldwide }}</span>{% endif %}</a>
+    {% for cc in QUICK_COUNTRIES[1:7] %}{% if country_counts.get(cc) %}<a class="pill" href="/discover?countries={{ cc }}">{{ country_name(cc) }} <span>{{ country_counts[cc] }}</span></a>{% endif %}{% endfor %}
+    <a class="pill" href="/discover">All countries</a>
+  </div>
+</div>
+
+{% if not has_runs and stats.total == 0 %}
+<section class="card onboarding">
+  <div>
+    <h2>Welcome to JobHub</h2>
+    <p class="muted">JobHub finds jobs from the configured sources, scores them against your profile and keeps track of every application. Three steps to get going:</p>
+  </div>
+  <ol class="steps">
+    <li><a href="/profile"><strong>Review your profile</strong></a><span class="muted">Skills, target titles and locations drive the match score.</span></li>
+    <li><a href="/sources"><strong>Choose job sources</strong></a><span class="muted">Arbeitnow and Remotive work out of the box; add Greenhouse or Lever company boards.</span></li>
+    <li><form action="/api/sync" method="post" class="js-sync-form inline"><button class="link-btn" type="submit"><strong>Fetch jobs now</strong></button></form><span class="muted">Runs in the background; this page stays responsive.</span></li>
+  </ol>
+</section>
+{% endif %}
+
+<section class="stats" aria-label="Summary">
+  <a class="stat" href="/discover"><span class="stat-label">Active jobs</span><span class="stat-value">{{ stats.total }}</span></a>
+  <a class="stat" href="/discover?new=1&sort=newest"><span class="stat-label">New</span><span class="stat-value">{{ stats.new }}</span></a>
+  <a class="stat" href="/discover?min_score=60"><span class="stat-label">Matching (60+)</span><span class="stat-value">{{ stats.matching }}</span></a>
+  <a class="stat" href="/discover?min_score=75"><span class="stat-label">High match (75+)</span><span class="stat-value accent">{{ stats.high }}</span></a>
+  <a class="stat" href="/saved"><span class="stat-label">Saved</span><span class="stat-value">{{ stats.saved }}</span></a>
+  <a class="stat" href="/applications?group=all"><span class="stat-label">Applications</span><span class="stat-value">{{ stats.submitted }}</span></a>
+  <a class="stat" href="/applications?group=interviewing"><span class="stat-label">Interviews</span><span class="stat-value">{{ stats.interviews }}</span></a>
+  <a class="stat" href="/applications?group=offers"><span class="stat-label">Offers</span><span class="stat-value">{{ stats.offers }}</span></a>
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Best opportunities</h2>
+      <a class="link" href="/discover?min_score=60&unapplied=1">View all<svg class="i"><use href="#i-arrow-right"/></svg></a>
+    </div>
+    {% if top %}
+      <div class="stack">{% for job in top %}{{ job_card(job, new_cutoff, "/") }}{% endfor %}</div>
+    {% else %}
+      {% call empty("No strong matches yet", "Jobs scoring 60 or more against your profile will appear here after a sync.", "sparkle") %}{% endcall %}
+    {% endif %}
+  </section>
+
+  <div class="stack">
+    <section class="panel">
+      <div class="panel-head"><h2>Upcoming follow-ups</h2><a class="link" href="/applications?sort=followup">Tracker<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
+      {% if followups %}
+      <ul class="list">
+        {% for a in followups %}
+        <li class="list-row">
+          <div><a href="/applications/{{ a.id }}" class="strong">{{ a.company }}</a><div class="muted small">{{ a.title }}</div></div>
+          <div class="right">
+            <span class="small {% if a.follow_up_date < today %}text-danger{% elif a.follow_up_date == today %}text-warn{% endif %}"><svg class="i"><use href="#i-calendar"/></svg>{{ fmt_date(a.follow_up_date) }}{% if a.follow_up_date < today %} · overdue{% endif %}</span>
+            {{ status_badge(a.status) }}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted small pad">No follow-ups due in the next two weeks.</p>{% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Application pipeline</h2></div>
+      {% if pipeline_rows %}
+      <ul class="pipeline">
+        {% for st, n in pipeline_rows %}
+        <li><a href="/applications?status={{ st|urlencode }}">{{ st }}</a><span class="bar"><span class="bar-fill {{ width_class((n / pipeline_max * 100) if pipeline_max else 0) }} band-neutral"></span></span><span class="num">{{ n }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="muted small pad">Track a job to start building your pipeline.</p>{% endif %}
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Source health</h2><a class="link" href="/sources">Manage<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
+      <ul class="list">
+        {% for src in sources %}
+        <li class="list-row">
+          <div><span class="strong">{{ src.name }}</span>
+            <div class="muted small">{% if src.last_success_at %}OK <time datetime="{{ iso(src.last_success_at) }}" data-relative>{{ fmt_dt(src.last_success_at) }}</time>{% else %}Never fetched{% endif %} · {{ source_counts.get(src.id, 0) }} active</div>
+          </div>
+          {{ source_status(src) }}
+        </li>
+        {% else %}<li class="muted small pad">No sources configured.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Recently discovered</h2><a class="link" href="/discover?sort=newest">All new jobs<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
+  {% if recent %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Role</th><th>Company</th><th class="hide-md">Location</th><th class="hide-md">Source</th><th class="hide-sm">Found</th><th class="num">Match</th></tr></thead>
+      <tbody>
+      {% for job in recent %}
+        <tr>
+          <td><a href="/jobs/{{ job.id }}" class="strong">{{ job.title }}</a></td>
+          <td>{{ job.company }}</td>
+          <td class="hide-md muted">{{ location_label(job) }}</td>
+          <td class="hide-md muted">{{ job.source.name }}</td>
+          <td class="hide-sm muted"><time datetime="{{ iso(job.first_seen_at) }}" data-relative>{{ fmt_date(job.first_seen_at) }}</time></td>
+          <td class="num">{{ score_badge(job.match_score, "score-sm") }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="muted small pad">Nothing discovered yet. Use “Fetch Jobs Now” to run the first sync.</p>{% endif %}
+</section>
+{% endblock %}

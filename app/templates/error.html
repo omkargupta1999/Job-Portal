@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ status }}{% endblock %}
+{% block content %}
+<div class="empty empty-page">
+  <div class="empty-icon"><svg class="i"><use href="#i-alert"/></svg></div>
+  <h1>{{ status }}</h1>
+  <p class="muted">{{ detail }}</p>
+  <div class="actions center"><a class="btn btn-secondary btn-sm" href="/">Back to dashboard</a></div>
+</div>
+{% endblock %}

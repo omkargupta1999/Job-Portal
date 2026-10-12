@@ -1,0 +1,53 @@
+{
+ "00-warning": "This API is for personal use only.",
+ "0-legal-notice": "Remotive API Legal Notice",
+ "job-count": 3,
+ "jobs": [
+  {
+   "id": 1900001,
+   "url": "https://remotive.com/remote-jobs/devops/sre-1900001",
+   "title": "Site Reliability Engineer",
+   "company_name": "Globex",
+   "company_logo": "https://remotive.com/job/1900001/logo",
+   "category": "DevOps / Sysadmin",
+   "tags": [
+    "kubernetes",
+    "aws",
+    "terraform"
+   ],
+   "job_type": "full_time",
+   "publication_date": "2026-10-10T08:00:00",
+   "candidate_required_location": "Worldwide",
+   "salary": "$120k - $150k",
+   "description": "<p>Run production on AWS with Kubernetes, Terraform and Prometheus. 4+ years of experience.</p>"
+  },
+  {
+   "id": 1900002,
+   "url": "https://remotive.com/remote-jobs/devops/devsecops-1900002",
+   "title": "DevSecOps Engineer",
+   "company_name": "Initech",
+   "category": "DevOps / Sysadmin",
+   "tags": [
+    "security"
+   ],
+   "job_type": "contract",
+   "publication_date": "2026-10-11T08:00:00",
+   "candidate_required_location": "India",
+   "salary": "",
+   "description": "<p>Integrate SAST (SonarQube), container image scanning with Trivy into GitLab CI. Docker, Kubernetes.</p>"
+  },
+  {
+   "id": 1900003,
+   "url": "https://remotive.com/remote-jobs/devops/cloud-1900003",
+   "title": "Cloud Engineer",
+   "company_name": "Umbrella",
+   "category": "DevOps / Sysadmin",
+   "tags": [],
+   "job_type": "full_time",
+   "publication_date": "2026-10-09T08:00:00",
+   "candidate_required_location": "USA Only",
+   "salary": "",
+   "description": "<p>AWS, Azure. We do not offer visa sponsorship.</p>"
+  }
+ ]
+}

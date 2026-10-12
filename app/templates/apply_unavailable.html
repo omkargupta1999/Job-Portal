@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Application link unavailable{% endblock %}
+{% block content %}
+<div class="card narrow">
+  <h1>No valid application link</h1>
+  <p class="muted">The source did not provide a usable application URL for <strong>{{ job.title }}</strong>{% if job.company %} at {{ job.company }}{% endif %}, or the stored link failed validation (only http/https links to public hosts are opened).</p>
+  {% if listing_url %}
+  <p>You can open the original listing instead and look for the employer's apply instructions there:</p>
+  <p><a class="btn btn-primary" href="{{ listing_url }}" target="_blank" rel="noopener noreferrer">Open original listing<svg class="i"><use href="#i-external"/></svg></a></p>
+  {% else %}
+  <p>No listing URL is stored either. Search for the role on the company's careers page.</p>
+  {% endif %}
+  <p><a class="link" href="/jobs/{{ job.id }}"><svg class="i"><use href="#i-chevron-left"/></svg>Back to job details</a></p>
+</div>
+{% endblock %}
