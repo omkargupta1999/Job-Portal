@@ -300,7 +300,7 @@ _FIELDS = ["title", "company", "description_html", "description_text", "listing_
            "preferred_skills", "tags", "department", "posted_at", "fingerprint", "content_hash"]
 
 
-def _apply_fields(job: Job, nj: NormalizedJob) -> None:
+def apply_fields(job: Job, nj: NormalizedJob) -> None:
     from app.textutil import normalize_key
 
     for name in _FIELDS:
@@ -345,7 +345,7 @@ def upsert_jobs(source_id: int, jobs: list[NormalizedJob], seen_at: datetime | N
                     if revived:
                         job.is_expired, job.expired_at = False, None
                     if old_hash != nj.content_hash:
-                        _apply_fields(job, nj)
+                        apply_fields(job, nj)
                         job.updated_at = now
                         apply_score(job, profile, weights, strict)
                         counts["updated"] += 1
@@ -359,7 +359,7 @@ def upsert_jobs(source_id: int, jobs: list[NormalizedJob], seen_at: datetime | N
                     continue
                 job = Job(source_id=source_id, external_id=nj.external_id, first_seen_at=now, last_seen_at=now,
                           updated_at=now)
-                _apply_fields(job, nj)
+                apply_fields(job, nj)
                 apply_score(job, profile, weights, strict)
                 s.add(job)
                 s.flush()

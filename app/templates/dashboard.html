@@ -1,126 +1,149 @@
 {% extends "base.html" %}
-{% from "macros.html" import job_card, score_badge, status_badge, source_status, empty, bar %}
+{% from "macros.html" import job_card, ring, avatar, status_badge, source_status, empty %}
 {% block title %}Dashboard{% endblock %}
 {% block content %}
-<div class="page-head">
+{% set first_name = (profile.full_name.split()[0] if profile and profile.full_name else "") %}
+
+<section class="hero">
   <div>
-    <h1>Dashboard</h1>
-    <p class="muted">
-      {% if sync.last_success_at %}Last successful sync <time datetime="{{ iso(sync.last_success_at) }}" data-relative>{{ fmt_dt(sync.last_success_at) }}</time>{% else %}No successful sync yet{% endif %}
-      {% if sync.next_run_at %} · next <time datetime="{{ iso(sync.next_run_at) }}" data-relative>{{ fmt_dt(sync.next_run_at) }}</time>{% elif not sync.scheduler_active %} · automatic sync is off{% endif %}
+    <div class="eyebrow">Your job search</div>
+    <h1>Welcome back{% if first_name %}, {{ first_name }}{% endif %}</h1>
+    <p>
+      {% if stats.relevant %}<strong>{{ stats.relevant }}</strong> open roles match your profile{% if stats.new %}, <strong>{{ stats.new }}</strong> new in the last {{ new_job_days }} days{% endif %}{% if stats.high %} · <strong>{{ stats.high }}</strong> strong matches (75+){% endif %}.
+      {% elif stats.total %}No roles match your target titles or skills yet. Review your profile or add more sources.
+      {% else %}Run your first sync to discover jobs from {{ sources|length }} source{{ '' if sources|length == 1 else 's' }}.{% endif %}
     </p>
+    <div class="meta-line">
+      <span><svg class="i"><use href="#i-clock"/></svg> {% if sync.last_success_at %}Synced <time datetime="{{ iso(sync.last_success_at) }}" data-relative>{{ fmt_dt(sync.last_success_at) }}</time>{% else %}Not synced yet{% endif %}</span>
+      {% if sync.next_run_at %}<span><svg class="i"><use href="#i-refresh"/></svg> Next <time datetime="{{ iso(sync.next_run_at) }}" data-relative>{{ fmt_dt(sync.next_run_at) }}</time></span>{% endif %}
+      <span><svg class="i"><use href="#i-layers"/></svg> {{ sources|length }} active sources</span>
+    </div>
   </div>
-  <div class="quick-filters" aria-label="Quick country filters">
-    <a class="pill" href="/discover?countries=IN">India only{% if country_counts.get('IN') %} <span>{{ country_counts['IN'] }}</span>{% endif %}</a>
-    <a class="pill" href="/discover?location_type=remote_worldwide"><svg class="i"><use href="#i-globe"/></svg>Remote worldwide{% if worldwide %} <span>{{ worldwide }}</span>{% endif %}</a>
-    {% for cc in QUICK_COUNTRIES[1:7] %}{% if country_counts.get(cc) %}<a class="pill" href="/discover?countries={{ cc }}">{{ country_name(cc) }} <span>{{ country_counts[cc] }}</span></a>{% endif %}{% endfor %}
-    <a class="pill" href="/discover">All countries</a>
+  <div class="actions">
+    <a class="btn btn-primary" href="/discover"><svg class="i"><use href="#i-search"/></svg>Browse matches</a>
+    <form action="/api/sync" method="post" class="js-sync-form inline"><button class="btn btn-secondary" type="submit"><svg class="i"><use href="#i-refresh"/></svg>Fetch now</button></form>
   </div>
-</div>
+</section>
 
 {% if not has_runs and stats.total == 0 %}
 <section class="card onboarding">
   <div>
-    <h2>Welcome to JobHub</h2>
-    <p class="muted">JobHub finds jobs from the configured sources, scores them against your profile and keeps track of every application. Three steps to get going:</p>
+    <h2>Get set up in three steps</h2>
+    <p class="muted">JobHub finds jobs from public job APIs and company career pages, scores them against your profile and tracks every application.</p>
   </div>
   <ol class="steps">
-    <li><a href="/profile"><strong>Review your profile</strong></a><span class="muted">Skills, target titles and locations drive the match score.</span></li>
-    <li><a href="/sources"><strong>Choose job sources</strong></a><span class="muted">Arbeitnow and Remotive work out of the box; add Greenhouse or Lever company boards.</span></li>
-    <li><form action="/api/sync" method="post" class="js-sync-form inline"><button class="link-btn" type="submit"><strong>Fetch jobs now</strong></button></form><span class="muted">Runs in the background; this page stays responsive.</span></li>
+    <li><a href="/profile"><strong>Review your profile</strong></a><span class="muted">Target titles and skills decide which jobs count as relevant.</span></li>
+    <li><a href="/sources"><strong>Add sources</strong></a><span class="muted">Add company career pages, an Adzuna key for India-wide search, or LinkedIn alerts.</span></li>
+    <li><form action="/api/sync" method="post" class="js-sync-form inline"><button class="link-btn" type="submit"><strong>Fetch jobs now</strong></button></form><span class="muted">Runs in the background.</span></li>
   </ol>
 </section>
 {% endif %}
 
-<section class="stats" aria-label="Summary">
-  <a class="stat" href="/discover"><span class="stat-label">Active jobs</span><span class="stat-value">{{ stats.total }}</span></a>
-  <a class="stat" href="/discover?new=1&sort=newest"><span class="stat-label">New</span><span class="stat-value">{{ stats.new }}</span></a>
-  <a class="stat" href="/discover?min_score=60"><span class="stat-label">Matching (60+)</span><span class="stat-value">{{ stats.matching }}</span></a>
-  <a class="stat" href="/discover?min_score=75"><span class="stat-label">High match (75+)</span><span class="stat-value accent">{{ stats.high }}</span></a>
-  <a class="stat" href="/saved"><span class="stat-label">Saved</span><span class="stat-value">{{ stats.saved }}</span></a>
-  <a class="stat" href="/applications?group=all"><span class="stat-label">Applications</span><span class="stat-value">{{ stats.submitted }}</span></a>
-  <a class="stat" href="/applications?group=interviewing"><span class="stat-label">Interviews</span><span class="stat-value">{{ stats.interviews }}</span></a>
-  <a class="stat" href="/applications?group=offers"><span class="stat-label">Offers</span><span class="stat-value">{{ stats.offers }}</span></a>
+<section class="kpis" aria-label="Summary">
+  <a class="kpi" href="/discover"><span class="kpi-icon tone-accent"><svg class="i"><use href="#i-sparkle"/></svg></span>
+    <span><span class="kpi-label">Relevant to you</span><br><span class="kpi-value">{{ stats.relevant }}</span><br><span class="kpi-sub">of {{ stats.total }} active jobs</span></span></a>
+  <a class="kpi" href="/discover?new=1&sort=newest"><span class="kpi-icon tone-info"><svg class="i"><use href="#i-clock"/></svg></span>
+    <span><span class="kpi-label">New matches</span><br><span class="kpi-value">{{ stats.new }}</span><br><span class="kpi-sub">{{ stats.new_all }} new in total</span></span></a>
+  <a class="kpi" href="/discover?min_score=75"><span class="kpi-icon tone-success"><svg class="i"><use href="#i-check"/></svg></span>
+    <span><span class="kpi-label">Strong matches</span><br><span class="kpi-value">{{ stats.high }}</span><br><span class="kpi-sub">score 75 or more</span></span></a>
+  <a class="kpi" href="/applications?group=active"><span class="kpi-icon tone-progress"><svg class="i"><use href="#i-briefcase"/></svg></span>
+    <span><span class="kpi-label">In progress</span><br><span class="kpi-value">{{ stats.in_progress }}</span><br><span class="kpi-sub">{{ stats.interviews }} interviewing · {{ stats.offers }} offers</span></span></a>
 </section>
+
+<section class="mini-stats" aria-label="More counts">
+  <a class="mini-stat" href="/saved"><span class="muted">Saved</span><strong>{{ stats.saved }}</strong></a>
+  <a class="mini-stat" href="/applications"><span class="muted">Applied</span><strong>{{ stats.submitted }}</strong></a>
+  <a class="mini-stat" href="/applications?group=interviewing"><span class="muted">Interviews</span><strong>{{ stats.interviews }}</strong></a>
+  <a class="mini-stat" href="/applications?group=offers"><span class="muted">Offers</span><strong>{{ stats.offers }}</strong></a>
+</section>
+
+<div class="chipbar" aria-label="Quick filters">
+  <a class="pill" href="/discover?countries=IN">India{% if country_counts.get('IN') %} <span>{{ country_counts['IN'] }}</span>{% endif %}</a>
+  <a class="pill" href="/discover?location_type=remote_worldwide"><svg class="i"><use href="#i-globe"/></svg>Remote worldwide{% if worldwide %} <span>{{ worldwide }}</span>{% endif %}</a>
+  {% for cc in QUICK_COUNTRIES[1:] %}{% if country_counts.get(cc) %}<a class="pill" href="/discover?countries={{ cc }}">{{ country_name(cc) }} <span>{{ country_counts[cc] }}</span></a>{% endif %}{% endfor %}
+  <span class="sep"></span>
+  <a class="pill" href="/discover?scope=all">All jobs <span>{{ stats.total }}</span></a>
+</div>
 
 <div class="grid-2">
   <section class="panel">
     <div class="panel-head">
-      <h2>Best opportunities</h2>
+      <h2>Best matches for you</h2>
       <a class="link" href="/discover?min_score=60&unapplied=1">View all<svg class="i"><use href="#i-arrow-right"/></svg></a>
     </div>
     {% if top %}
       <div class="stack">{% for job in top %}{{ job_card(job, new_cutoff, "/") }}{% endfor %}</div>
     {% else %}
-      {% call empty("No strong matches yet", "Jobs scoring 60 or more against your profile will appear here after a sync.", "sparkle") %}{% endcall %}
+      {% call empty("No strong matches yet", "Relevant jobs scoring 60 or more appear here. Add company career pages or an Adzuna key on Job Sources to widen the search.", "sparkle") %}
+        <div class="actions center"><a class="btn btn-secondary btn-sm" href="/sources">Add sources</a></div>
+      {% endcall %}
     {% endif %}
   </section>
 
-  <div class="stack">
+  <div class="stack-lg">
     <section class="panel">
-      <div class="panel-head"><h2>Upcoming follow-ups</h2><a class="link" href="/applications?sort=followup">Tracker<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
+      <div class="panel-head"><h2>Follow-ups</h2><a class="link" href="/applications?sort=followup">Tracker<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
       {% if followups %}
       <ul class="list">
         {% for a in followups %}
         <li class="list-row">
-          <div><a href="/applications/{{ a.id }}" class="strong">{{ a.company }}</a><div class="muted small">{{ a.title }}</div></div>
+          <div class="cell-title">{{ avatar(a.company) }}<div><a href="/applications/{{ a.id }}" class="strong">{{ a.company }}</a><div class="muted xsmall">{{ a.title }}</div></div></div>
           <div class="right">
-            <span class="small {% if a.follow_up_date < today %}text-danger{% elif a.follow_up_date == today %}text-warn{% endif %}"><svg class="i"><use href="#i-calendar"/></svg>{{ fmt_date(a.follow_up_date) }}{% if a.follow_up_date < today %} · overdue{% endif %}</span>
-            {{ status_badge(a.status) }}
+            <span class="xsmall {% if a.follow_up_date < today %}text-danger{% elif a.follow_up_date == today %}text-warn{% else %}muted{% endif %}"><svg class="i"><use href="#i-calendar"/></svg>{{ fmt_date(a.follow_up_date) }}{% if a.follow_up_date < today %} · overdue{% endif %}</span>
           </div>
         </li>
         {% endfor %}
       </ul>
-      {% else %}<p class="muted small pad">No follow-ups due in the next two weeks.</p>{% endif %}
+      {% else %}<p class="muted small pad">Nothing due in the next two weeks.</p>{% endif %}
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Application pipeline</h2></div>
+      <div class="panel-head"><h2>Pipeline</h2></div>
       {% if pipeline_rows %}
       <ul class="pipeline">
         {% for st, n in pipeline_rows %}
-        <li><a href="/applications?status={{ st|urlencode }}">{{ st }}</a><span class="bar"><span class="bar-fill {{ width_class((n / pipeline_max * 100) if pipeline_max else 0) }} band-neutral"></span></span><span class="num">{{ n }}</span></li>
+        <li><a href="/applications?status={{ st|urlencode }}">{{ st }}</a><span class="bar"><span class="bar-fill {{ width_class((n / pipeline_max * 100) if pipeline_max else 0) }} band-neutral"></span></span><span class="num strong">{{ n }}</span></li>
         {% endfor %}
       </ul>
-      {% else %}<p class="muted small pad">Track a job to start building your pipeline.</p>{% endif %}
+      {% else %}<p class="muted small pad">Track or apply to a job to start your pipeline.</p>{% endif %}
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>Source health</h2><a class="link" href="/sources">Manage<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
+      <div class="panel-head"><h2>Sources</h2><a class="link" href="/sources">Manage<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
       <ul class="list">
-        {% for src in sources %}
+        {% for src in sources[:8] %}
         <li class="list-row">
-          <div><span class="strong">{{ src.name }}</span>
-            <div class="muted small">{% if src.last_success_at %}OK <time datetime="{{ iso(src.last_success_at) }}" data-relative>{{ fmt_dt(src.last_success_at) }}</time>{% else %}Never fetched{% endif %} · {{ source_counts.get(src.id, 0) }} active</div>
+          <div><span class="strong small">{{ src.name }}</span>
+            <div class="muted xsmall">{% if src.last_success_at %}<time datetime="{{ iso(src.last_success_at) }}" data-relative>{{ fmt_dt(src.last_success_at) }}</time>{% else %}Never fetched{% endif %} · {{ source_counts.get(src.id, 0) }} active</div>
           </div>
           {{ source_status(src) }}
         </li>
-        {% else %}<li class="muted small pad">No sources configured.</li>{% endfor %}
+        {% else %}<li class="muted small pad">No sources enabled.</li>{% endfor %}
       </ul>
+      {% if sources|length > 8 %}<p class="xsmall muted mt-2">+ {{ sources|length - 8 }} more on the Job Sources page</p>{% endif %}
     </section>
   </div>
 </div>
 
 <section class="panel">
-  <div class="panel-head"><h2>Recently discovered</h2><a class="link" href="/discover?sort=newest">All new jobs<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
+  <div class="panel-head"><h2>Recently discovered for you</h2><a class="link" href="/discover?sort=newest">All new jobs<svg class="i"><use href="#i-arrow-right"/></svg></a></div>
   {% if recent %}
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Role</th><th>Company</th><th class="hide-md">Location</th><th class="hide-md">Source</th><th class="hide-sm">Found</th><th class="num">Match</th></tr></thead>
+      <thead><tr><th>Role</th><th class="hide-md">Location</th><th class="hide-md">Source</th><th class="hide-sm">Found</th><th class="num">Match</th></tr></thead>
       <tbody>
       {% for job in recent %}
         <tr>
-          <td><a href="/jobs/{{ job.id }}" class="strong">{{ job.title }}</a></td>
-          <td>{{ job.company }}</td>
+          <td><div class="cell-title">{{ avatar(job.company) }}<div><a href="/jobs/{{ job.id }}" class="strong">{{ job.title }}</a><div class="muted xsmall">{{ job.company }}</div></div></div></td>
           <td class="hide-md muted">{{ location_label(job) }}</td>
           <td class="hide-md muted">{{ job.source.name }}</td>
           <td class="hide-sm muted"><time datetime="{{ iso(job.first_seen_at) }}" data-relative>{{ fmt_date(job.first_seen_at) }}</time></td>
-          <td class="num">{{ score_badge(job.match_score, "score-sm") }}</td>
+          <td class="num">{{ ring(job.match_score) }}</td>
         </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
-  {% else %}<p class="muted small pad">Nothing discovered yet. Use “Fetch Jobs Now” to run the first sync.</p>{% endif %}
+  {% else %}<p class="muted small pad">Nothing relevant discovered yet. Use “Fetch now” or add sources.</p>{% endif %}
 </section>
 {% endblock %}

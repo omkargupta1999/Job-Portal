@@ -1,8 +1,48 @@
 # Test results
 
+## v1.1.0 (2026-10-12): 171 passed, 0 failed
+
+| Module | Tests | New in v1.1 |
+|---|---:|---|
+| `tests/test_config.py` | 16 | Actionable auth-password error that never echoes the secret |
+| `tests/test_db.py` | 12 | Upgrade of a v3 (v1.0) database with jobs to v4; relevance re-score runs once; backups are single files |
+| `tests/test_directory.py` | 5 | Directory validity, identifier variants (keeps “ServiceNow”, “GrafanaLabs”), careers-URL parsing, probe needs a real board, finder probes every ATS |
+| `tests/test_geo.py` | 18 | — |
+| `tests/test_matching.py` | 12 | Relocation-aware location scores; role-based relevance independent of location |
+| `tests/test_new_sources.py` | 17 | Adzuna (profile queries, predicted salary ignored, bad key), Jobicy, Remote OK, Ashby, SmartRecruiters (details only for matching titles), Workable, LinkedIn alert emails (plain-text and HTML; tokens never kept), auto-disable on 404, age-based expiry, manual source never fetched |
+| `tests/test_search.py` | 14 | “Relevant to me” is the default scope |
+| `tests/test_sources.py` | 15 | — |
+| `tests/test_sync.py` | 15 | Sources needing setup are reported as “setup”, not errors |
+| `tests/test_text_prepare.py` | 18 | — |
+| `tests/test_web.py` | 29 | Add-job from a LinkedIn URL (canonical URL, scoring, tracking, de-duplication), validation, bookmarklet, relevant/all Discover, Sources page, directory and careers-URL adding, company finder |
+
+```
+$ python3 -m pytest -o addopts="" -p no:warnings -q          # local, Python 3.13
+171 passed in 13.19s
+$ docker run --rm jobhub:test python -m pytest -o addopts="" -q -p no:warnings   # image, Python 3.12
+171 passed in 14.43s
+$ ruff check app tests
+All checks passed!
+```
+
+Manual verification for v1.1 (build environment):
+
+- **Upgrade path.** A database created by the v1.0 code (commit 242d5bf, schema v3, 11 jobs) was copied into the `jobhub-data` volume. The v1.1 image was started on it with `docker compose up -d`. Observed:
+  - The container reached `healthy`.
+  - The log shows `Backed up database before migration … pre-migration-v3.db` and `Applying migration 4`.
+  - The 5 new sources were registered.
+  - `Scoring rules updated to v2; re-scored 11 jobs`, with 9 of 11 jobs flagged relevant.
+  - All pages returned HTTP 200.
+- **Bookmarklet.** In headless Chromium, the bookmarklet code from `/jobs/new` was run on a stand-in page titled “(2) Senior Platform Engineer | Globex Cloud | LinkedIn” with text selected. It opened JobHub with title “Senior Platform Engineer”, company “Globex Cloud” and the selected description. It was **not** tested on linkedin.com itself (not reachable from the build environment).
+- **Layout.** Pages were checked at 1440 px and 390 px for horizontal overflow; none was found. No console errors in light or dark themes.
+
+Not verified in v1.1: live calls to Adzuna, Jobicy, Remote OK, Ashby, SmartRecruiters and Workable, and real LinkedIn alert emails. The fixtures and synthetic emails follow the documented or secondary-source formats described in README → Job sources.
+
+---
+
 Recorded on 2026-10-12 in the build environment (Linux, Python 3.13.16 locally; Python 3.12-slim in the Docker test image; SQLite 3.45).
 
-## Automated tests: 137 passed, 0 failed
+## v1.0.0: 137 passed, 0 failed
 
 | Module | Tests | What it covers |
 |---|---:|---|

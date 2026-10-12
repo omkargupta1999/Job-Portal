@@ -155,6 +155,7 @@ def test_backup_and_restore_roundtrip(storage):
         s.add(Alert(name="before backup", query=""))
     backup = create_backup(storage.db_path, storage.backups_dir, "test")
     verify_database(backup)
+    assert not list(storage.backups_dir.glob("*-wal")) and not list(storage.backups_dir.glob("*-shm"))
     with write_session() as s:
         s.add(Alert(name="after backup", query=""))
     dispose()

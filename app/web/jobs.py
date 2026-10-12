@@ -8,13 +8,18 @@ from datetime import date
 
 from fastapi import APIRouter, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
+from sqlalchemy import select
 
 from app.db import read_session, write_session
 from app.geo import country_name
-from app.models import Application, ApplicationEvent, Job, Preparation, Profile, utcnow
+from app.models import Application, ApplicationEvent, Job, Preparation, Profile, Source, utcnow
 from app.prepare import DRAFT_NOTICE, generate
+from app.quickadd import bookmarklet, canonicalize, guess_from_title, validate_job_url
+from app.scoring import apply_score, load_scoring_context
 from app.security import validate_external_url
 from app.sources import ADAPTERS
+from app.sources.base import build_job
+from app.sync import apply_fields
 from app.textutil import split_sections
 from app.web.common import json_ok, redirect, render, safe_next, wants_json
 
@@ -26,6 +31,56 @@ def _get_job(session, job_id: int) -> Job:
     if job is None:
         raise HTTPException(404, "Job not found")
     return job
+
+
+@router.get("/jobs/new")
+def new_job_form(request: Request, url: str = "", title: str = "", company: str = "", location: str = "",
+                 text: str = ""):
+    """Add a job from LinkedIn, Naukri or any site. Prefilled by the bookmarklet."""
+    guessed_title, guessed_company = guess_from_title(title) if title else ("", "")
+    site = canonicalize(url)[0] if validate_job_url(url) else ""
+    form = {"url": url[:2000], "title": guessed_title or title[:300], "company": company[:200] or guessed_company,
+            "location": location[:300], "description": text[:20000]}
+    return render(request, "add_job.html", "addjob", form=form, site=site,
+                  bookmarklet=bookmarklet(str(request.base_url)))
+
+
+@router.post("/jobs/new")
+def create_job(request: Request, url: str = Form(...), title: str = Form(...), company: str = Form(""),
+               location: str = Form(""), description: str = Form(""), action: str = Form("save")):
+    clean_url = validate_job_url(url)
+    form = {"url": url, "title": title, "company": company, "location": location, "description": description}
+    if not clean_url or not title.strip():
+        return render(request, "add_job.html", "addjob", form=form, site="", status_code=400,
+                      error="A valid http(s) job URL and a job title are required.",
+                      bookmarklet=bookmarklet(str(request.base_url)))
+    site, external_id, canonical = canonicalize(clean_url)
+    with write_session() as s:
+        manual = s.scalar(select(Source).where(Source.key == "manual"))
+        if manual is None:
+            manual = Source(key="manual", adapter="manual", name=ADAPTERS["manual"].display_name, enabled=True)
+            s.add(manual)
+            s.flush()
+        existing = s.scalar(select(Job).where(Job.source_id == manual.id, Job.external_id == external_id))
+        if existing:
+            return redirect(f"/jobs/{existing.id}", notice="You already added this job.")
+        nj = build_job(external_id=external_id, title=title.strip(), company=company.strip(),
+                       description=description, description_is_html=False, listing_url=canonical,
+                       apply_url=canonical, location=location.strip(), tags=[f"Added from {site}"] if site else [],
+                       posted_at=None)
+        job = Job(source_id=manual.id, external_id=external_id, first_seen_at=utcnow(), last_seen_at=utcnow(),
+                  updated_at=utcnow())
+        apply_fields(job, nj)
+        profile, weights, strict = load_scoring_context(s)
+        apply_score(job, profile, weights, strict)
+        job.is_saved = action in {"save", "track"}
+        job.saved_at = utcnow() if job.is_saved else None
+        s.add(job)
+        s.flush()
+        if action == "track":
+            _ensure_application(s, job, "Interested", f"Added from {site or 'the web'}")
+        job_id = job.id
+    return redirect(f"/jobs/{job_id}", notice="Job added and scored against your profile.")
 
 
 @router.get("/jobs/{job_id}")

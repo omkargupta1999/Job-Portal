@@ -271,6 +271,11 @@
     });
   });
 
+  // ---- Collapse the filter panel on small screens -------------------------------------------
+  if (window.matchMedia && window.matchMedia("(max-width: 1080px)").matches) {
+    $$("details.filters-toggle").forEach(function (d) { d.removeAttribute("open"); });
+  }
+
   // ---- Filter persistence (Discover) --------------------------------------------------------
   var persist = $("[data-persist-filters]");
   if (persist) {

@@ -1,0 +1,524 @@
+{
+ "_note": "Candidate career pages compiled from public knowledge of which applicant-tracking system each company uses. Companies change systems, so every entry is verified live with one request to the ATS's public job API; boards that no longer exist are disabled automatically. Regions are indicative only - JobHub filters by each job's actual location.",
+ "companies": [
+  {
+   "name": "GitLab",
+   "ats": "greenhouse",
+   "id": "gitlab",
+   "regions": [
+    "india",
+    "remote"
+   ]
+  },
+  {
+   "name": "Databricks",
+   "ats": "greenhouse",
+   "id": "databricks",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "MongoDB",
+   "ats": "greenhouse",
+   "id": "mongodb",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Elastic",
+   "ats": "greenhouse",
+   "id": "elastic",
+   "regions": [
+    "india",
+    "remote"
+   ]
+  },
+  {
+   "name": "Twilio",
+   "ats": "greenhouse",
+   "id": "twilio",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Stripe",
+   "ats": "greenhouse",
+   "id": "stripe",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Coinbase",
+   "ats": "greenhouse",
+   "id": "coinbase",
+   "regions": [
+    "india",
+    "remote"
+   ]
+  },
+  {
+   "name": "Okta",
+   "ats": "greenhouse",
+   "id": "okta",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Rubrik",
+   "ats": "greenhouse",
+   "id": "rubrik",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Postman",
+   "ats": "greenhouse",
+   "id": "postman",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Cloudflare",
+   "ats": "greenhouse",
+   "id": "cloudflare",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Datadog",
+   "ats": "greenhouse",
+   "id": "datadog",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Grafana Labs",
+   "ats": "greenhouse",
+   "id": "grafanalabs",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "Canonical",
+   "ats": "greenhouse",
+   "id": "canonical",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "PagerDuty",
+   "ats": "greenhouse",
+   "id": "pagerduty",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "CircleCI",
+   "ats": "greenhouse",
+   "id": "circleci",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "New Relic",
+   "ats": "greenhouse",
+   "id": "newrelic",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Fivetran",
+   "ats": "greenhouse",
+   "id": "fivetran",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Airbnb",
+   "ats": "greenhouse",
+   "id": "airbnb",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Dropbox",
+   "ats": "greenhouse",
+   "id": "dropbox",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "Figma",
+   "ats": "greenhouse",
+   "id": "figma",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Discord",
+   "ats": "greenhouse",
+   "id": "discord",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Reddit",
+   "ats": "greenhouse",
+   "id": "reddit",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Robinhood",
+   "ats": "greenhouse",
+   "id": "robinhood",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Instacart",
+   "ats": "greenhouse",
+   "id": "instacart",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Pinterest",
+   "ats": "greenhouse",
+   "id": "pinterest",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Samsara",
+   "ats": "greenhouse",
+   "id": "samsara",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Gusto",
+   "ats": "greenhouse",
+   "id": "gusto",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Airtable",
+   "ats": "greenhouse",
+   "id": "airtable",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Brex",
+   "ats": "greenhouse",
+   "id": "brex",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "HackerRank",
+   "ats": "greenhouse",
+   "id": "hackerrank",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "BrowserStack",
+   "ats": "greenhouse",
+   "id": "browserstack",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "PhonePe",
+   "ats": "greenhouse",
+   "id": "phonepe",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Druva",
+   "ats": "greenhouse",
+   "id": "druva",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Chargebee",
+   "ats": "greenhouse",
+   "id": "chargebee",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Groww",
+   "ats": "greenhouse",
+   "id": "groww",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Netflix",
+   "ats": "lever",
+   "id": "netflix",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Palantir",
+   "ats": "lever",
+   "id": "palantir",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Plaid",
+   "ats": "lever",
+   "id": "plaid",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Spotify",
+   "ats": "lever",
+   "id": "spotify",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "CRED",
+   "ats": "lever",
+   "id": "cred",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Meesho",
+   "ats": "lever",
+   "id": "meesho",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Zeta",
+   "ats": "lever",
+   "id": "zeta",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Razorpay",
+   "ats": "lever",
+   "id": "razorpay",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Mattermost",
+   "ats": "lever",
+   "id": "mattermost",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "ShareChat",
+   "ats": "lever",
+   "id": "sharechat",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Upstox",
+   "ats": "lever",
+   "id": "upstox",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "OpenAI",
+   "ats": "ashby",
+   "id": "openai",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Ramp",
+   "ats": "ashby",
+   "id": "ramp",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Notion",
+   "ats": "ashby",
+   "id": "notion",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Linear",
+   "ats": "ashby",
+   "id": "linear",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "PostHog",
+   "ats": "ashby",
+   "id": "posthog",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "Supabase",
+   "ats": "ashby",
+   "id": "supabase",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "Replit",
+   "ats": "ashby",
+   "id": "replit",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Vercel",
+   "ats": "ashby",
+   "id": "vercel",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "Snyk",
+   "ats": "ashby",
+   "id": "snyk",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Deel",
+   "ats": "ashby",
+   "id": "deel",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "1Password",
+   "ats": "ashby",
+   "id": "1password",
+   "regions": [
+    "remote"
+   ]
+  },
+  {
+   "name": "Cohere",
+   "ats": "ashby",
+   "id": "cohere",
+   "regions": [
+    "international"
+   ]
+  },
+  {
+   "name": "Visa",
+   "ats": "smartrecruiters",
+   "id": "Visa",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "ServiceNow",
+   "ats": "smartrecruiters",
+   "id": "ServiceNow",
+   "regions": [
+    "india",
+    "international"
+   ]
+  },
+  {
+   "name": "Freshworks",
+   "ats": "smartrecruiters",
+   "id": "Freshworks",
+   "regions": [
+    "india"
+   ]
+  },
+  {
+   "name": "Bosch Group",
+   "ats": "smartrecruiters",
+   "id": "BoschGroup",
+   "regions": [
+    "india",
+    "international"
+   ]
+  }
+ ]
+}

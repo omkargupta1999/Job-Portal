@@ -39,6 +39,12 @@ Open **Job Sources** to see each source's status, last success and last error. E
 | `resolves to non-public address` | DNS returned a private IP, which the SSRF guard blocks. | Fix DNS. If you must use a proxy, set `HTTPS_PROXY` so the proxy resolves names instead. |
 | `CERTIFICATE_VERIFY_FAILED` | A TLS-intercepting proxy is in the path. | Put the proxy CA into the volume (e.g. `/data/corp-ca.pem`) and set `SSL_CERT_FILE=/data/corp-ca.pem`. |
 | `Unexpected … response` | The provider changed its API format. | Disable the source and report or fix the adapter in `app/sources/`. |
+| `Needs setup` (Adzuna or LinkedIn job-alert emails) | The source needs a key or a mailbox. | Follow the steps shown on **Job Sources**, then run `docker compose up -d`. |
+| `Adzuna rejected the API key (HTTP 401/403)` | Wrong or inactive App ID/Key. | Copy both values again from developer.adzuna.com into `.env`, then run `docker compose up -d`. |
+| `IMAP login failed` | Gmail and most providers reject your normal password over IMAP. | Enable 2-Step Verification, create an **App Password**, put it in `JOBHUB_IMAP_PASSWORD` (single-quoted), and check that IMAP is enabled in Gmail settings. |
+| LinkedIn alerts imported 0 jobs | No alert emails within `JOBHUB_IMAP_DAYS`, a different sender address, or a changed email layout. | Check the alerts arrive from `jobalerts-noreply@linkedin.com` (or set `JOBHUB_IMAP_SENDERS`). The parser is experimental; if the layout changed, use the Save to JobHub bookmarklet meanwhile. |
+| `Career page not found (HTTP 404) - disabled automatically` | The company no longer uses that platform, or the identifier is wrong. | Use **Find any company's career page** to look it up again, or remove the source. |
+| Few or no jobs under **Relevant to me** | Relevance follows your profile's target titles and skills. | Check **Resume & Profile** → target titles and skills, add career pages or an Adzuna key, or switch Discover to **All jobs**. |
 | `skipped to respect the source's rate limit` | This is not an error. Remotive is fetched at most every 6 hours; other sources at most every 30 minutes. | Wait. From the CLI, `python -m app.cli sync --force` ignores these intervals. Use it sparingly. |
 
 If sync succeeds but the dashboard shows few matches, check the **Profile**. Preferred countries strongly affect scores: by default, jobs outside your countries are capped at 45. You can turn that cap off in **Settings**.

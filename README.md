@@ -12,6 +12,8 @@ Contents: [Features](#features) · [Architecture](#architecture) · [Job sources
 |---|---|---|
 | ![Dashboard](docs/screenshots/dashboard-light.png) | ![Job details](docs/screenshots/job-detail-dark.png) | ![Discover on mobile](docs/screenshots/discover-mobile.png) |
 
+![Job sources](docs/screenshots/sources-light.png)
+
 <sub>The screenshots use the fictional companies from the test fixtures. A real installation only shows jobs fetched from your configured sources.</sub>
 
 ---
@@ -20,6 +22,7 @@ Contents: [Features](#features) · [Architecture](#architecture) · [Job sources
 
 | Area | What you get |
 |---|---|
+| **Relevance** | Discover and the dashboard default to jobs whose role matches your profile (title family or 3+ required skills), from any country. **All jobs** is one click away. |
 | **Dashboard** | Counts taken from the database (active, new, matching, high-match, saved, applied, interviews, offers), best opportunities, recently discovered jobs, follow-ups due, application pipeline, source health, last and next sync, a "Fetch Jobs Now" button, and quick country filters. |
 | **Automatic discovery** | A background scheduler with a configurable interval and fetch-on-startup. Live progress shows fetched, added, updated, skipped and expired counts. Each source fails independently, temporary errors are retried with bounded backoff, runs can't overlap, and listings are deduplicated. |
 | **Country filtering** | All 249 ISO 3166-1 countries in a searchable multi-select, with shortcuts such as "India only" and "Remote worldwide". You can filter by region and city. JobHub separates on-site jobs, country-restricted remote, region-restricted remote, worldwide remote and unknown-location jobs. A country is never invented: one inferred from a well-known city is labelled *inferred*. |
@@ -31,6 +34,7 @@ Contents: [Features](#features) · [Architecture](#architecture) · [Job sources
 | **Tracker** | 14 statuses with status groups, search, sort, pagination, history and follow-up reminders. Export to CSV is protected against formula injection. Records survive when a listing expires. |
 | **Alerts** | Saved searches re-evaluated after each sync. New matches appear on the page and as a sidebar badge. Alerts are in-app only; there is no email. |
 | **Settings** | Sync interval, limits, retention, matching weights, light/dark/system theme, one-click online backup and backup download. |
+| **Design** | Self-hosted Inter typeface, light and dark palettes, score rings, per-company colour avatars, collapsible filter groups and a responsive layout. No external assets are loaded. |
 
 ## Architecture
 
@@ -68,26 +72,50 @@ Contents: [Features](#features) · [Architecture](#architecture) · [Job sources
 
 ## Job sources
 
-Every integration below uses an official, documented, unauthenticated public endpoint. JobHub only reads published listings and never submits applications.
+JobHub reads jobs only from official public job APIs, company career-page APIs and job-alert emails in your own mailbox. It never scrapes websites, never logs in as you and never submits applications. The **Job Sources** page shows every source with its status and how its API format was established.
 
-| Source | Endpoint | Credentials | Notes |
-|---|---|---|---|
-| **Arbeitnow** | `GET https://www.arbeitnow.com/api/job-board-api?page=N` | None | Mostly Europe/Germany plus remote. Paginated via `links.next`. |
-| **Remotive** | `GET https://remotive.com/api/remote-jobs` ([docs](https://github.com/remotive-com/remote-jobs-api)) | None | Remote only. Per Remotive's terms, JobHub limits this source to one fetch every 6 hours (at most 4 a day) and links back to Remotive with attribution. Listings are delayed 24 hours by Remotive. |
-| **Greenhouse** (per company) | `GET https://boards-api.greenhouse.io/v1/boards/{token}/jobs?content=true` ([docs](https://developers.greenhouse.io/job-board.html)) | None | Returns all published jobs in one response, so a missing job is reliably marked expired. |
-| **Lever** (per company) | `GET https://api.lever.co/v0/postings/{site}?mode=json&skip=&limit=` ([docs](https://github.com/lever/postings-api)), EU: `api.eu.lever.co` | None | Paginated. Uses `workplaceType`, `country` and `salaryRange` when present. |
+### Where jobs come from
 
-**Unsupported sites (link only):** LinkedIn, Naukri, Indeed, foundit and Glassdoor offer no API that individuals may use, and their terms prohibit scraping. JobHub does **not** access them. The profile page provides links to each site's own search page, prefilled with your target titles and cities, and you can add roles you find there to the tracker manually.
+| Source | Kind | Coverage | Credentials | API format evidence |
+|---|---|---|---|---|
+| **Adzuna** — `api.adzuna.com/v1/api/jobs/{country}/search` | Job search | India and 18 other countries; aggregates many employers' career pages and boards. Searches your target titles in your preferred countries. | Free key from developer.adzuna.com | Indirect (endpoint from Adzuna docs as quoted by search results; field names from third-party clients) |
+| **Arbeitnow** — `arbeitnow.com/api/job-board-api` | Public feed | Mostly Germany/Europe, some remote | None | Verified live on the first real sync (2026-10-12) |
+| **Remotive** — `remotive.com/api/remote-jobs` | Public feed | Remote | None | Direct (official README); verified live |
+| **Jobicy** — `jobicy.com/api/v2/remote-jobs` | Public feed, keyword search | Remote | None | Direct (official README, github.com/Jobicy/remote-jobs-api) |
+| **Remote OK** — `remoteok.com/api` | Public feed | Remote, recent window | None | Indirect (secondary sources) |
+| **Greenhouse** boards | Career page | One company per board | None | Indirect (secondary sources) |
+| **Lever** boards (incl. EU) | Career page | One company per site | None | Direct (official README) |
+| **Ashby** boards | Career page | One company per board | None | Endpoint direct (Ashby docs); some field names indirect |
+| **SmartRecruiters** companies | Career page | One company each | None | Endpoint direct (SmartRecruiters docs); field names indirect |
+| **Workable** accounts | Career page | One company each | None | Indirect (secondary sources) |
+| **LinkedIn job-alert emails** (IMAP) | Email | Whatever your LinkedIn alerts contain | Your mailbox (read-only, app password) | Indirect (open-source parsers); **experimental** |
+| **Added by you** | Manual | Any site (LinkedIn, Naukri, …) via the Add-job page or bookmarklet | — | — |
 
-**Adding a company board:** on the **Job Sources** page, choose Greenhouse or Lever and paste the company's careers URL or board identifier, or set `JOBHUB_GREENHOUSE_BOARDS` / `JOBHUB_LEVER_SITES` in `.env`. Before relying on a company, check that it actually uses that platform; a wrong identifier shows up as an `HTTP 404` source error.
+“Indirect” means that the official documentation could not be reached from the build environment and the format comes from secondary sources. Those adapters parse tolerantly. If a provider's format differs, that one source shows an error on **Job Sources** and the others keep working.
 
-**Adding a new adapter:** subclass `SourceAdapter` in `app/sources/`, set `allowed_hosts`, implement `fetch()` to return `NormalizedJob`s via `build_job()`, and register the class in `app/sources/__init__.py`. Storage, deduplication, change detection, expiry and scoring are handled by the core.
+### Covering more companies
 
-**Evidence status of the endpoint contracts:**
+- **Find any company's career page.** On **Job Sources**, type a company name. JobHub asks the public APIs of Greenhouse, Lever, Ashby, Workable and SmartRecruiters whether the company has a board there (about 20 small requests) and offers only boards that exist.
+- **Company directory.** A starter list of about 60 tech companies with India offices or remote roles. Entries are candidates compiled from public knowledge. Each is verified with a live request when added, and boards that return 404 are disabled automatically.
+- **Paste a careers URL** such as `jobs.lever.co/<company>`, `boards.greenhouse.io/<company>`, `jobs.ashbyhq.com/<company>`, `apply.workable.com/<company>` or `jobs.smartrecruiters.com/<Company>`.
+- **Adzuna** covers employers that use Workday, Taleo, SuccessFactors or their own portals. Those systems have no public API, so they cannot be added as career pages.
 
-- **Lever and Remotive** (direct evidence): field names and terms were checked against each vendor's official README.
-- **Greenhouse and Arbeitnow** (indirect evidence): the field contracts come from secondary sources and long-standing public usage.
-- **Live verification:** none of the APIs could be called from the build sandbox because of network restrictions. All adapters are covered by automated tests against fixtures that mirror the documented response shapes. They have not been exercised against the live services, so check **Job Sources** after your first sync.
+### LinkedIn and Naukri
+
+LinkedIn has no jobs API for individuals and its User Agreement prohibits scraping; Naukri, Indeed, foundit and Glassdoor offer no public job-seeker API either. JobHub therefore provides:
+
+1. **LinkedIn job-alert emails (automatic, experimental).**
+   - Create job alerts on LinkedIn, then set `JOBHUB_IMAP_*` in `.env`. For Gmail, use `imap.gmail.com` and an App Password.
+   - JobHub opens the mailbox read-only and reads only mail from `jobalerts-noreply@linkedin.com`. It keeps only the numeric job ID from each link and never stores or follows the sign-in-token links.
+   - Alerts contain title, company and location but no description.
+2. **Save to JobHub bookmarklet.** On any job page you are viewing, select the description and click the bookmark. JobHub opens with the URL, title, company and description filled in. It is tested in Chromium against a local page; it has not been tested on linkedin.com itself.
+3. **Search links** prefilled with your target titles and cities.
+
+### Relevance
+
+Discover shows **“Relevant to me”** by default. A job is relevant when its title is in (or next to) your target role family, or when it requires at least 3 of your profile skills. Location is scored separately and does not hide jobs, so relevant roles abroad and remote roles appear too. If your profile has *Open to relocation: Yes*, jobs abroad score 55 for location instead of 5, or 70 when the posting mentions visa sponsorship or relocation help. Switch to **All jobs** to see everything.
+
+**Adding a new adapter:** subclass `SourceAdapter` in `app/sources/`, set `kind` and `allowed_hosts`, implement `fetch(client, max_jobs, ctx)` to return `NormalizedJob`s via `build_job()`, and register the class in `app/sources/__init__.py`. Storage, deduplication, change detection, expiry and scoring are handled by the core.
 
 ## Install on Ubuntu
 
@@ -248,7 +276,7 @@ docker build --target test -t jobhub:test . && docker run --rm jobhub:test
 # Locally
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest -q                 # 137 tests; all external feeds are mocked (results: docs/TEST_RESULTS.md)
+pytest -q                 # 171 tests; all external feeds are mocked (results: docs/TEST_RESULTS.md)
 ruff check app tests
 ```
 
@@ -264,7 +292,10 @@ python -m app.cli serve             # http://127.0.0.1:8080, data in ./data
 
 ## Known limitations
 
-- **Unverified against live APIs.** The adapters were built from published API contracts and tested with fixtures. They could not be exercised against the live APIs from the build environment. If a provider changes its response format, that source shows an error on **Job Sources** and the others keep working.
+- **Partly unverified against live APIs.** Arbeitnow and Remotive have been confirmed on a real sync. The other adapters were built from published or secondary-source API formats and tested with fixtures. If a provider's format differs, that source shows an error on **Job Sources** and the others keep working.
+- **LinkedIn email import is experimental.** LinkedIn does not document its alert email format. The parser was built from open-source parsers and tested on synthetic emails, not real ones.
+- **Adzuna returns excerpts.** Adzuna results include a short excerpt rather than the full ad, so skill matching is approximate. Its free-tier limits are not clearly published, so JobHub defaults to 8 searches per sync, at most every 12 hours.
+- **The company directory is a starting point.** Its entries are unverified until added, and companies on Workday, Taleo, SuccessFactors or their own portals cannot be added as career pages because those systems have no public API.
 - **Matching is heuristic.** Skill detection relies on a curated taxonomy of roughly 120 skills with aliases, so skills outside it are not recognised. Required and preferred skills are split using section headings. Years of experience and salary are extracted from text and can be missed. Unknowns score as neutral and are labelled.
 - **Partial country coverage.** Only the 249 ISO countries, subdivisions for 10 countries and a curated list of well-known cities are recognised. Other city names are kept as text but do not infer a country.
 - **Resume parsing.** Scanned PDFs are not OCR'd. Extraction results are suggestions to review.

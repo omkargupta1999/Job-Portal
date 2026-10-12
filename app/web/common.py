@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, datetime
 from pathlib import Path
 from urllib.parse import urlencode
@@ -16,7 +17,7 @@ from app.config import get_settings
 from app.db import read_session
 from app.geo import LOCATION_TYPE_LABELS, QUICK_COUNTRIES, countries, country_name, location_label
 from app.matching import COMPONENT_LABELS, score_band
-from app.models import APPLICATION_STATUSES, Alert, Application, Job, SyncRun
+from app.models import APPLICATION_STATUSES, Alert, Application, Job, Profile, SyncRun
 from app.scheduler import get_scheduler
 from app.search import LEVELS, LOCATION_TYPES, POSTED_WITHIN, SORTS, WORK_MODES
 from app.sync import is_running
@@ -69,6 +70,27 @@ def fmt_salary(job) -> str:
     return f"{cur} {rng}{period}".strip()
 
 
+def avatar_class(name: str | None) -> str:
+    """Stable colour class per company name (8 tasteful tints)."""
+    value = sum(ord(ch) for ch in (name or "?").lower())
+    return f"av-{value % 8}"
+
+
+def initials(name: str | None) -> str:
+    words = [w for w in re.split(r"[^A-Za-z0-9]+", name or "") if w]
+    if not words:
+        return "?"
+    return (words[0][0] + (words[1][0] if len(words) > 1 else "")).upper()
+
+
+RING_CIRCUMFERENCE = 2 * 3.14159 * 20  # r=20 in a 48x48 viewBox
+
+
+def ring_dash(score: int | None) -> str:
+    s = max(0, min(100, int(score or 0)))
+    return f"{RING_CIRCUMFERENCE * s / 100:.1f} {RING_CIRCUMFERENCE:.1f}"
+
+
 def width_class(score: int | None) -> str:
     s = max(0, min(100, int(score or 0)))
     return f"w-{int(round(s / 5) * 5)}"
@@ -84,6 +106,9 @@ templates.env.globals.update(
     fmt_date=fmt_date,
     fmt_salary=fmt_salary,
     width_class=width_class,
+    avatar_class=avatar_class,
+    initials=initials,
+    ring_dash=ring_dash,
     WORK_MODE_LABELS=WORK_MODE_LABELS,
     LEVEL_LABELS=LEVEL_LABELS,
     EMPLOYMENT_LABELS=EMPLOYMENT_LABELS,
@@ -118,8 +143,13 @@ def sync_state(session) -> dict:
 
 
 def nav_context(session) -> dict:
+    profile = session.get(Profile, 1)
     return {
+        "profile_name": (profile.full_name if profile else "") or "",
+        "profile_headline": (profile.headline if profile else "") or "",
         "saved": session.scalar(select(func.count(Job.id)).where(Job.is_saved.is_(True), Job.is_hidden.is_(False))) or 0,
+        "relevant": session.scalar(select(func.count(Job.id)).where(
+            Job.is_relevant.is_(True), Job.is_hidden.is_(False), Job.is_expired.is_(False))) or 0,
         "applications": session.scalar(select(func.count(Application.id))) or 0,
         "alerts_new": session.scalar(select(func.coalesce(func.sum(Alert.new_matches), 0))
                                      .where(Alert.enabled.is_(True))) or 0,

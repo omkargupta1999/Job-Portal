@@ -32,6 +32,8 @@ def create_backup(db_path: Path, backups_dir: Path, label: str = "") -> Path:
     dst = sqlite3.connect(str(target))
     try:
         src.backup(dst)
+        # Store the copy as a single self-contained file (no -wal/-shm sidecars).
+        dst.execute("PRAGMA journal_mode=DELETE")
     finally:
         dst.close()
         src.close()

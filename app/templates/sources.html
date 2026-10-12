@@ -1,80 +1,160 @@
 {% extends "base.html" %}
-{% from "macros.html" import source_status %}
+{% from "macros.html" import source_status, avatar %}
 {% block title %}Job Sources{% endblock %}
 {% block content %}
+{% set KIND_LABELS = {'feed': 'Public feed', 'board': 'Career page', 'search': 'Job search', 'email': 'Email alerts', 'manual': 'Manual'} %}
+{% set by_adapter = {} %}{% for src in sources %}{% set _ = by_adapter.update({src.adapter: src}) %}{% endfor %}
 <div class="page-head">
   <div>
+    <div class="eyebrow">Where your jobs come from</div>
     <h1>Job Sources</h1>
-    <p class="muted">Integrations use official public APIs and feeds only. Each source is fetched independently; one failing source never stops the others.</p>
+    <p class="muted">JobHub only uses official public job APIs, company career-page APIs and your own job-alert emails. It never scrapes sites or logs in as you. Each source is fetched on its own, so one failing source never stops the others.</p>
   </div>
 </div>
 
 <section class="panel flush">
   <div class="table-wrap">
     <table class="table">
-      <thead><tr><th>Source</th><th>Status</th><th class="hide-sm">Last success</th><th class="num hide-sm">Active jobs</th><th class="hide-md">Last run</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <thead><tr><th>Source</th><th>Status</th><th class="hide-sm">Last success</th><th class="num hide-sm" title="Relevant to your profile / all active jobs">Relevant</th><th><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>
       {% for src in sources %}
       {% set ad = adapters.get(src.adapter) %}
+      {% set c = src.last_counts or {} %}
       <tr>
-        <td><span class="strong">{{ src.name }}</span>
-          <div class="muted small">{{ ad.description if ad else src.adapter }}</div>
-          {% if src.last_error and src.status == 'error' %}<div class="error-text small">{{ src.last_error }}</div>{% endif %}
-          {% if ad and ad.terms_note %}<div class="muted small">{{ ad.terms_note }}</div>{% endif %}
+        <td class="source-cell">
+          <div class="source-name"><span class="strong">{{ src.name }}</span><span class="badge tone-neutral">{{ KIND_LABELS.get(ad.kind, ad.kind) if ad else src.adapter }}</span></div>
+          <div class="muted xsmall">{{ ad.description if ad else '' }}</div>
+          {% if src.last_error and src.status in ('error', 'setup') %}<div class="{{ 'error-text' if src.status == 'error' else 'text-warn' }} xsmall">{{ src.last_error }}</div>{% endif %}
+          {% if ad %}
+          <details class="about">
+            <summary>About this source</summary>
+            {% if c %}<div class="xsmall">Last run: {{ c.fetched or 0 }} fetched · {{ c.added or 0 }} new · {{ c.updated or 0 }} updated{% if c.duplicates %} · {{ c.duplicates }} duplicates skipped{% endif %}{% if c.expired %} · {{ c.expired }} expired{% endif %}</div>{% endif %}
+            {% if ad.terms_note %}<div class="xsmall muted">{{ ad.terms_note }}</div>{% endif %}
+            {% if ad.contract_evidence %}<div class="evidence">API format: {{ ad.contract_evidence }}</div>{% endif %}
+            {% if ad.docs_url %}<div class="xsmall"><a href="{{ ad.docs_url }}" target="_blank" rel="noopener noreferrer">Documentation</a></div>{% endif %}
+          </details>
+          {% endif %}
         </td>
-        <td>{{ source_status(src) }}</td>
-        <td class="hide-sm">{% if src.last_success_at %}<time datetime="{{ iso(src.last_success_at) }}" data-relative>{{ fmt_dt(src.last_success_at) }}</time>{% else %}<span class="muted">Never</span>{% endif %}</td>
-        <td class="num hide-sm">{{ active_counts.get(src.id, 0) }}<span class="muted small"> / {{ total_counts.get(src.id, 0) }}</span></td>
-        <td class="hide-md small muted">{% set c = src.last_counts or {} %}{% if c %}{{ c.fetched or 0 }} fetched · {{ c.added or 0 }} new · {{ c.updated or 0 }} updated · {{ c.unchanged or 0 }} unchanged{% if c.duplicates %} · {{ c.duplicates }} duplicates{% endif %} · {{ c.expired or 0 }} expired{% if not c.complete %} · partial listing{% endif %}{% else %}—{% endif %}</td>
+        <td>{% if src.adapter == 'manual' %}<span class="status-dot tone-success">Manual</span>{% else %}{{ source_status(src) }}{% endif %}</td>
+        <td class="hide-sm xsmall nowrap">{% if src.last_success_at %}<time datetime="{{ iso(src.last_success_at) }}" data-relative>{{ fmt_dt(src.last_success_at) }}</time>{% else %}<span class="muted">—</span>{% endif %}</td>
+        <td class="num hide-sm"><span class="strong">{{ relevant_counts.get(src.id, 0) }}</span><span class="muted xsmall"> / {{ active_counts.get(src.id, 0) }}</span></td>
         <td class="right nowrap">
-          <form method="post" action="/sources/{{ src.id }}/sync" class="inline js-source-sync"><button class="btn btn-ghost btn-sm" type="submit" {% if not src.enabled %}disabled{% endif %}><svg class="i"><use href="#i-refresh"/></svg>Refresh</button></form>
+          {% if ad and ad.fetchable %}
+          <form method="post" action="/sources/{{ src.id }}/sync" class="inline js-source-sync"><button class="icon-btn" type="submit" title="Refresh now" aria-label="Refresh {{ src.name }}" {% if not src.enabled %}disabled{% endif %}><svg class="i"><use href="#i-refresh"/></svg></button></form>
           <form method="post" action="/sources/{{ src.id }}/toggle" class="inline"><button class="btn btn-ghost btn-sm" type="submit">{{ 'Disable' if src.enabled else 'Enable' }}</button></form>
-          {% if not total_counts.get(src.id) %}<form method="post" action="/sources/{{ src.id }}/delete" class="inline"><button class="icon-btn" type="submit" aria-label="Remove source" title="Remove" data-confirm="Remove this source?"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}
+          {% endif %}
+          {% if not total_counts.get(src.id) and src.adapter not in ('manual', 'adzuna', 'email_alerts') %}<form method="post" action="/sources/{{ src.id }}/delete" class="inline"><button class="icon-btn" type="submit" aria-label="Remove source" title="Remove" data-confirm="Remove this source?"><svg class="i"><use href="#i-trash"/></svg></button></form>{% endif %}
         </td>
       </tr>
-      {% else %}
-      <tr><td colspan="6" class="muted">No sources configured.</td></tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
 </section>
 
-<div class="grid-2">
-  <section class="panel">
-    <h2>Add a company board</h2>
-    <p class="muted small">Many employers host their careers page on Greenhouse or Lever, which offer public, credential-free job APIs. Enter the company's board identifier (or paste its careers URL).</p>
-    <form method="post" action="/sources" class="form">
-      <label class="field"><span>Platform</span>
-        <select name="adapter">
-          {% for key, ad in adapters.items() if ad.requires_identifier %}<option value="{{ key }}">{{ ad.display_name }}</option>{% endfor %}
-        </select>
-      </label>
-      <label class="field"><span>Board identifier</span><input type="text" name="identifier" required maxlength="300" placeholder="e.g. gitlab  or  https://boards.greenhouse.io/gitlab"></label>
-      <ul class="hint-list small muted">
-        <li><strong>Greenhouse</strong>: boards.greenhouse.io/<em>token</em> or job-boards.greenhouse.io/<em>token</em></li>
-        <li><strong>Lever</strong>: jobs.lever.co/<em>site</em> (EU accounts: jobs.eu.lever.co/<em>site</em> → “Lever (EU)”)</li>
+<div class="grid-2 even mt-section">
+  <section class="panel" id="find">
+    <div class="panel-head"><h2><svg class="i"><use href="#i-search"/></svg>Find any company's career page</h2></div>
+    <p class="panel-sub">Type a company name. JobHub asks the public job APIs of Greenhouse, Lever, Ashby, Workable and SmartRecruiters whether that company has a board there (about 20 small requests) and only offers boards that exist.</p>
+    <form method="post" action="/sources/find" class="finder">
+      <input type="text" name="company" required maxlength="80" placeholder="e.g. Razorpay, Atlassian, Postman" value="{{ find_query or '' }}" aria-label="Company name">
+      <button class="btn btn-primary" type="submit">Search</button>
+    </form>
+    {% if find_query %}
+    <div class="found-list">
+      {% if find_results %}
+      <ul class="list">
+        {% for r in find_results %}
+        <li class="list-row">
+          <div class="cell-title">{{ avatar(r.company or find_query) }}<div><span class="strong">{{ r.company or find_query }}</span>
+            <div class="muted xsmall">{{ adapters[r.adapter].display_name }} · {{ r.identifier }} · {{ r.jobs }} open job{{ '' if r.jobs == 1 else 's' }}</div></div></div>
+          {% if r.key in by_key %}<span class="badge tone-success">Added</span>{% else %}
+          <form method="post" action="/sources"><input type="hidden" name="adapter" value="{{ r.adapter }}"><input type="hidden" name="identifier" value="{{ r.identifier }}">
+            <input type="hidden" name="name" value="{{ r.company or find_query }}"><input type="hidden" name="fetch" value="1">
+            <button class="btn btn-soft btn-sm" type="submit"><svg class="i"><use href="#i-plus"/></svg>Add & fetch</button></form>{% endif %}
+        </li>
+        {% endfor %}
       </ul>
-      <button class="btn btn-primary btn-sm" type="submit"><svg class="i"><use href="#i-plus"/></svg>Add source</button>
-    </form>
-    {% set missing = [] %}
-    {% for key, ad in adapters.items() if not ad.requires_identifier %}{% if not (sources|selectattr('adapter', 'equalto', key)|list) %}{% set _ = missing.append(key) %}{% endif %}{% endfor %}
-    {% if missing %}
-    <form method="post" action="/sources" class="form-inline">
-      <select name="adapter" aria-label="Feed">{% for key in missing %}<option value="{{ key }}">{{ adapters[key].display_name }}</option>{% endfor %}</select>
-      <button class="btn btn-secondary btn-sm" type="submit">Add feed</button>
-    </form>
+      {% else %}
+      <div class="callout"><svg class="i"><use href="#i-alert"/></svg><div>No public job board found for “{{ find_query }}”. The company may use Workday, Taleo, SuccessFactors or its own portal, which have no public API, or a different board name. Paste its careers URL below if it is on a supported platform, or add individual jobs with <a href="/jobs/new">Add job</a>.</div></div>
+      {% endif %}
+    </div>
     {% endif %}
+    <h3 class="sub">Or paste a careers URL</h3>
+    <form method="post" action="/sources" class="finder">
+      <input type="text" name="identifier" required maxlength="300" placeholder="https://jobs.lever.co/company  ·  boards.greenhouse.io/company" aria-label="Careers URL">
+      <input type="hidden" name="fetch" value="1">
+      <button class="btn btn-secondary" type="submit">Add</button>
+    </form>
+    <p class="hint-text">Recognised: boards.greenhouse.io, job-boards.greenhouse.io, jobs.lever.co, jobs.eu.lever.co, jobs.ashbyhq.com, apply.workable.com/&lt;account&gt;, jobs.smartrecruiters.com.</p>
   </section>
 
-  <section class="panel">
-    <h2>Sites without an integration</h2>
-    <p class="muted small">These popular sites do not offer an API that individuals may use, and their terms prohibit automated scraping. JobHub does not access them. Use the search links on the <a class="link" href="/profile">profile page</a>, then add interesting roles to the tracker manually.</p>
-    <ul class="list">
-      {% for site in search_sites %}
-      <li class="list-row"><div><span class="strong">{{ site.name }}</span><div class="muted small">{{ site.note }}</div></div><span class="badge tone-muted">Not supported</span></li>
+  <section class="panel" id="adzuna">
+    <div class="panel-head"><h2><svg class="i"><use href="#i-globe"/></svg>India-wide & international search (Adzuna)</h2>
+      {% if by_adapter.adzuna %}{{ source_status(by_adapter.adzuna) }}{% endif %}</div>
+    <p class="panel-sub">Adzuna aggregates jobs from thousands of employers' career pages and job boards in India, the UK, US, Europe, Australia, Singapore and more. JobHub searches it with your profile's target titles in your preferred countries.</p>
+    {% if settings_obj.adzuna_configured %}
+      <div class="callout"><svg class="i"><use href="#i-check"/></svg><div>API key configured. Countries searched: <strong>{% if settings_obj.adzuna_countries %}{{ settings_obj.adzuna_countries|join(', ')|upper }}{% else %}your profile's preferred countries{% endif %}</strong> · up to {{ settings_obj.adzuna_max_queries }} searches per sync, at most every 12 hours.</div></div>
+    {% else %}
+      <ol class="setup-steps">
+        <li>Register for a free key at <a href="https://developer.adzuna.com" target="_blank" rel="noopener noreferrer">developer.adzuna.com</a>.</li>
+        <li>Add to <code>.env</code>: <code>JOBHUB_ADZUNA_APP_ID=…</code> and <code>JOBHUB_ADZUNA_APP_KEY=…</code><br><span class="muted xsmall">Optional: <code>JOBHUB_ADZUNA_COUNTRIES=in,gb,de,sg</code> (defaults to your profile countries).</span></li>
+        <li>Run <code>docker compose up -d</code>, then Refresh “Adzuna” above.</li>
+      </ol>
+    {% endif %}
+    <p class="hint-text">Adzuna returns a short excerpt rather than the full job ad, so skill matching is approximate until you open the listing. Salaries that Adzuna estimates are ignored.</p>
+  </section>
+</div>
+
+<section class="panel mt-section" id="directory">
+  <div class="panel-head"><h2><svg class="i"><use href="#i-building"/></svg>Company career pages</h2>
+    <form method="post" action="/sources/directory" class="inline"><input type="hidden" name="all" value="1"><input type="hidden" name="region" value="india">
+      <button class="btn btn-soft btn-sm" type="submit">Add all with India offices</button></form></div>
+  <p class="panel-sub">A starter list of tech companies and the job-board platform each is believed to use. Companies switch platforms, so every page is checked live when you add it; pages that no longer exist are disabled automatically. Region tags are only a guide; each job is filtered by its own location.</p>
+  <form method="post" action="/sources/directory">
+    <div class="dir-list">
+      {% for e in directory %}
+      {% set st = e.source %}
+      <label class="dir-item{% if st %} is-added{% endif %}">
+        {% if not st %}<input type="checkbox" name="keys" value="{{ e.key }}">{% endif %}
+        {{ avatar(e.name) }}
+        <span class="dir-meta"><span class="strong">{{ e.name }}</span>
+          <small>{{ adapters[e.ats].display_name }}{% if 'india' in e.regions %} · India{% endif %}{% if 'remote' in e.regions %} · Remote{% endif %}
+          {% if st %} · {% if st.status == 'ok' %}<span class="text-success">{{ active_counts.get(st.id, 0) }} jobs</span>{% elif st.status == 'error' %}<span class="text-danger">{{ 'not found' if not st.enabled else 'error' }}</span>{% else %}added{% endif %}{% endif %}</small></span>
+      </label>
       {% endfor %}
-    </ul>
+    </div>
+    <div class="actions mt-2"><button class="btn btn-primary btn-sm" type="submit">Add selected & fetch</button>
+      <span class="muted xsmall">{{ directory|selectattr('source')|list|length }} of {{ directory|length }} added</span></div>
+  </form>
+</section>
+
+<div class="grid-2 even mt-section">
+  <section class="panel" id="linkedin">
+    <div class="panel-head"><h2><svg class="i"><use href="#i-link"/></svg>LinkedIn</h2>{% if by_adapter.email_alerts %}{{ source_status(by_adapter.email_alerts) }}{% endif %}</div>
+    <p class="panel-sub">LinkedIn has no jobs API for individuals and its User Agreement forbids scraping, so JobHub never connects to LinkedIn. There are two supported ways to bring LinkedIn jobs in:</p>
+    <h3 class="sub">1 · Automatic: LinkedIn job-alert emails <span class="badge tone-warn">experimental</span></h3>
+    <ol class="setup-steps">
+      <li>On LinkedIn, run a job search (e.g. “DevOps Engineer”, India) and switch on <strong>Set alert</strong> (daily).</li>
+      <li>For Gmail, create an <strong>App Password</strong> (Google Account → Security → 2-Step Verification → App passwords).</li>
+      <li>Add to <code>.env</code>: <code>JOBHUB_IMAP_HOST=imap.gmail.com</code>, <code>JOBHUB_IMAP_USER=you@gmail.com</code>, <code>JOBHUB_IMAP_PASSWORD='app-password'</code>, then run <code>docker compose up -d</code>.</li>
+    </ol>
+    <p class="hint-text">JobHub opens the mailbox read-only, reads only mail from jobalerts-noreply@linkedin.com, keeps only the job ID from each link and never follows the sign-in links in the email. Alerts carry title, company and location but no description.</p>
+    <h3 class="sub">2 · One click per job: the “Save to JobHub” button</h3>
+    <p class="small muted">Drag this button to your bookmarks bar. When you are viewing a job on LinkedIn, Naukri or any site, select the job description (optional) and click it. JobHub opens with the details filled in.</p>
+    <p><a class="bookmarklet" href="{{ bookmarklet }}" title="Drag me to your bookmarks bar"><svg class="i"><use href="#i-bookmark"/></svg>Save to JobHub</a></p>
+    <p class="hint-text">Or open <a href="/jobs/new">Add job</a> and paste the job URL and description.</p>
+  </section>
+
+  <section class="panel" id="other-sites">
+    <div class="panel-head"><h2><svg class="i"><use href="#i-external"/></svg>Naukri, Indeed & others</h2></div>
+    <p class="panel-sub">These sites offer no API that individuals may use and do not allow scraping. Use the search links below (prefilled with your target titles and cities) and save interesting roles with the Save to JobHub button.</p>
+    {% for site in search_links %}
+    <details class="search-site">
+      <summary><span class="strong small">{{ site.name }}</span><span class="badge tone-muted">search links</span></summary>
+      <ul class="link-list">{% for l in site.links %}<li><a href="{{ l.url }}" target="_blank" rel="noopener noreferrer">{{ l.label }}<svg class="i"><use href="#i-external"/></svg></a></li>{% endfor %}</ul>
+    </details>
+    {% endfor %}
   </section>
 </div>
 {% endblock %}

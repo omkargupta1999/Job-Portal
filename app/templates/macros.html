@@ -10,63 +10,74 @@
 <span class="bar" aria-hidden="true"><span class="bar-fill {{ width_class(score) }} band-{{ score_band(score) }}"></span></span>
 {%- endmacro %}
 
+{% macro ring(score, size="") -%}
+{% set band = score_band(score) %}
+<span class="ring ring-{{ band }} {{ size }}" title="Match score {{ score }} of 100" role="img" aria-label="Match score {{ score }} of 100">
+  <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true"><circle class="track" cx="24" cy="24" r="20" fill="none" stroke-width="4.5"/><circle class="arc" cx="24" cy="24" r="20" fill="none" stroke-width="4.5" stroke-dasharray="{{ ring_dash(score) }}"/></svg>
+  <span class="ring-value">{{ score }}</span>
+</span>
+{%- endmacro %}
+
+{% macro avatar(name, size="") -%}
+<div class="company-mark {{ avatar_class(name) }} {{ size }}" aria-hidden="true">{{ initials(name or "?") }}</div>
+{%- endmacro %}
+
 {% macro job_meta(job) -%}
 <ul class="meta">
   <li><svg class="i"><use href="#i-pin"/></svg>{{ location_label(job) }}{% if job.country_inferred %} <span class="hint" title="Country inferred from the city/region named in the listing">inferred</span>{% endif %}</li>
   {% if job.work_mode != 'unknown' %}<li>{{ WORK_MODE_LABELS[job.work_mode] }}</li>{% endif %}
   {% if job.employment_type %}<li>{{ EMPLOYMENT_LABELS.get(job.employment_type, job.employment_type) }}</li>{% endif %}
-  {% if job.experience_level %}<li>{{ LEVEL_LABELS.get(job.experience_level, job.experience_level) }}</li>{% endif %}
+  {% if job.experience_level %}<li>{{ LEVEL_LABELS.get(job.experience_level, job.experience_level) }}{% if job.years_min is not none %} · {{ job.years_min }}{% if job.years_max %}–{{ job.years_max }}{% else %}+{% endif %} yrs{% endif %}</li>{% endif %}
   {% set sal = fmt_salary(job) %}{% if sal %}<li class="strong">{{ sal }}</li>{% endif %}
+  {% if job.visa_sponsorship %}<li>Visa sponsorship</li>{% endif %}
 </ul>
 {%- endmacro %}
 
 {% macro job_card(job, new_cutoff=None, next="/discover") -%}
 <article class="job-card{% if job.is_expired %} is-expired{% endif %}" id="job-{{ job.id }}">
-  <div class="job-card-main">
-    <div class="job-card-head">
-      <div class="company-mark" aria-hidden="true">{{ (job.company or '?')[:1]|upper }}</div>
-      <div class="job-card-title">
-        <h3><a href="/jobs/{{ job.id }}">{{ job.title }}</a></h3>
-        <div class="job-company"><span>{{ job.company or 'Company not stated' }}</span>
-          {% if new_cutoff and job.first_seen_at >= new_cutoff %}<span class="badge tone-accent">New</span>{% endif %}
-          {% if job.is_expired %}<span class="badge tone-muted">Expired</span>{% endif %}
-          {% if job.application %}{{ status_badge(job.application.status) }}{% endif %}
-        </div>
+  <div class="job-card-head">
+    {{ avatar(job.company) }}
+    <div class="job-card-title">
+      <h3><a href="/jobs/{{ job.id }}">{{ job.title }}</a></h3>
+      <div class="job-company"><span>{{ job.company or 'Company not stated' }}</span>
+        {% if new_cutoff and job.first_seen_at >= new_cutoff %}<span class="badge tone-accent">New</span>{% endif %}
+        {% if job.is_expired %}<span class="badge tone-muted">Expired</span>{% endif %}
+        {% if job.application %}{{ status_badge(job.application.status) }}{% endif %}
       </div>
-      {{ score_badge(job.match_score) }}
     </div>
-    {{ job_meta(job) }}
-    {% set details = job.match_details or {} %}
-    {% if details.matched_skills %}
-    <div class="chips">
-      {% for s in details.matched_skills[:6] %}<span class="chip chip-match">{{ s }}</span>{% endfor %}
-      {% for s in (details.missing_required or [])[:3] %}<span class="chip chip-missing" title="Required skill not in your profile">{{ s }}</span>{% endfor %}
-    </div>
-    {% elif job.skills %}
-    <div class="chips">{% for s in job.skills[:6] %}<span class="chip">{{ s }}</span>{% endfor %}</div>
-    {% endif %}
-    <div class="job-card-foot">
-      <span class="muted small"><svg class="i"><use href="#i-clock"/></svg>
-        {% if job.posted_at %}Posted <time datetime="{{ iso(job.posted_at) }}" data-relative>{{ fmt_date(job.posted_at) }}</time>{% else %}Found <time datetime="{{ iso(job.first_seen_at) }}" data-relative>{{ fmt_date(job.first_seen_at) }}</time>{% endif %}
-        · {{ job.source.name }}
-      </span>
-      <div class="actions">
-        <a class="btn btn-ghost btn-sm" href="/jobs/{{ job.id }}">Details</a>
-        <form method="post" action="/jobs/{{ job.id }}/save" class="js-toggle" data-kind="save">
-          <input type="hidden" name="next" value="{{ next }}">
-          <input type="hidden" name="action" value="{{ 'unsave' if job.is_saved else 'save' }}">
-          <button class="icon-btn{% if job.is_saved %} is-on{% endif %}" type="submit" aria-pressed="{{ 'true' if job.is_saved else 'false' }}" title="{{ 'Remove from saved' if job.is_saved else 'Save job' }}" aria-label="{{ 'Remove from saved' if job.is_saved else 'Save job' }}"><svg class="i"><use href="#i-bookmark"/></svg></button>
-        </form>
-        <form method="post" action="/jobs/{{ job.id }}/hide" class="js-toggle" data-kind="hide">
-          <input type="hidden" name="next" value="{{ next }}">
-          <input type="hidden" name="action" value="{{ 'unhide' if job.is_hidden else 'hide' }}">
-          <button class="icon-btn" type="submit" title="{{ 'Restore job' if job.is_hidden else 'Hide job' }}" aria-label="{{ 'Restore job' if job.is_hidden else 'Hide job' }}"><svg class="i"><use href="#i-{{ 'eye' if job.is_hidden else 'eye-off' }}"/></svg></button>
-        </form>
-        <a class="btn btn-secondary btn-sm hide-sm" href="/jobs/{{ job.id }}/prepare">Prepare</a>
-        {% if job.apply_url %}
-        <a class="btn btn-primary btn-sm" href="/jobs/{{ job.id }}/apply" target="_blank" rel="noopener noreferrer" data-apply="{{ job.id }}" data-next="{{ next }}">Apply<svg class="i"><use href="#i-external"/></svg></a>
-        {% endif %}
-      </div>
+    {{ ring(job.match_score) }}
+  </div>
+  {{ job_meta(job) }}
+  {% set details = job.match_details or {} %}
+  {% if details.matched_skills %}
+  <div class="chips">
+    {% for s in details.matched_skills[:6] %}<span class="chip chip-match">{{ s }}</span>{% endfor %}
+    {% for s in (details.missing_required or [])[:3] %}<span class="chip chip-missing" title="Required skill not in your profile">{{ s }}</span>{% endfor %}
+  </div>
+  {% elif job.skills %}
+  <div class="chips">{% for s in job.skills[:6] %}<span class="chip">{{ s }}</span>{% endfor %}</div>
+  {% endif %}
+  <div class="job-card-foot">
+    <span class="muted xsmall"><svg class="i"><use href="#i-clock"/></svg>
+      {% if job.posted_at %}Posted <time datetime="{{ iso(job.posted_at) }}" data-relative>{{ fmt_date(job.posted_at) }}</time>{% else %}Found <time datetime="{{ iso(job.first_seen_at) }}" data-relative>{{ fmt_date(job.first_seen_at) }}</time>{% endif %}
+      · {{ job.source.name }}
+    </span>
+    <div class="actions">
+      <form method="post" action="/jobs/{{ job.id }}/save" class="js-toggle" data-kind="save">
+        <input type="hidden" name="next" value="{{ next }}">
+        <input type="hidden" name="action" value="{{ 'unsave' if job.is_saved else 'save' }}">
+        <button class="icon-btn{% if job.is_saved %} is-on{% endif %}" type="submit" aria-pressed="{{ 'true' if job.is_saved else 'false' }}" title="{{ 'Remove from saved' if job.is_saved else 'Save job' }}" aria-label="{{ 'Remove from saved' if job.is_saved else 'Save job' }}"><svg class="i"><use href="#i-bookmark"/></svg></button>
+      </form>
+      <form method="post" action="/jobs/{{ job.id }}/hide" class="js-toggle" data-kind="hide">
+        <input type="hidden" name="next" value="{{ next }}">
+        <input type="hidden" name="action" value="{{ 'unhide' if job.is_hidden else 'hide' }}">
+        <button class="icon-btn" type="submit" title="{{ 'Restore job' if job.is_hidden else 'Hide job' }}" aria-label="{{ 'Restore job' if job.is_hidden else 'Hide job' }}"><svg class="i"><use href="#i-{{ 'eye' if job.is_hidden else 'eye-off' }}"/></svg></button>
+      </form>
+      <a class="btn btn-ghost btn-sm" href="/jobs/{{ job.id }}">Details</a>
+      <a class="btn btn-secondary btn-sm hide-sm" href="/jobs/{{ job.id }}/prepare">Prepare</a>
+      {% if job.apply_url %}
+      <a class="btn btn-primary btn-sm" href="/jobs/{{ job.id }}/apply" target="_blank" rel="noopener noreferrer" data-apply="{{ job.id }}" data-next="{{ next }}">Apply<svg class="i"><use href="#i-external"/></svg></a>
+      {% endif %}
     </div>
   </div>
 </article>
@@ -82,7 +93,7 @@
 {%- endmacro %}
 
 {% macro source_status(src) -%}
-{% set tone = {'ok': 'success', 'error': 'danger', 'running': 'progress', 'never': 'muted', 'disabled': 'muted'}.get(src.status, 'muted') %}
-{% set label = {'ok': 'Healthy', 'error': 'Error', 'running': 'Fetching', 'never': 'Not fetched yet', 'disabled': 'Disabled'}.get(src.status, src.status) %}
+{% set tone = {'ok': 'success', 'error': 'danger', 'running': 'progress', 'never': 'muted', 'disabled': 'muted', 'setup': 'warn'}.get(src.status, 'muted') %}
+{% set label = {'ok': 'Healthy', 'error': 'Error', 'running': 'Fetching', 'never': 'Not fetched yet', 'disabled': 'Disabled', 'setup': 'Needs setup'}.get(src.status, src.status) %}
 <span class="status-dot tone-{{ tone }}">{{ label if src.enabled or src.status == 'running' else 'Disabled' }}</span>
 {%- endmacro %}

@@ -37,7 +37,7 @@ def test_all_pages_render_empty(client):
         r = client.get(path)
         assert r.status_code == 200, path
         assert "JobHub" in r.text
-    assert "Welcome to JobHub" in client.get("/").text
+    assert "Get set up in three steps" in client.get("/").text
 
 
 def test_health_check(client):
@@ -67,7 +67,7 @@ def test_manual_sync_populates_dashboard(client):
     assert status["run"]["status"] == "success" and status["run"]["added"] == 11
     assert status["last_success_at"]
     page = client.get("/").text
-    assert "Best opportunities" in page and "Welcome to JobHub" not in page
+    assert "Best matches for you" in page and "Get set up in three steps" not in page
     assert "Kubernetes Engineer" in page
     r = client.post("/api/sync", headers={"X-Requested-With": "fetch"})
     assert r.status_code == 200  # a second run is allowed once the first finished
@@ -79,7 +79,7 @@ def test_discover_filters_via_http(client):
     page = client.get("/discover?countries=IN&work_mode=hybrid").text
     assert "Kubernetes Engineer" in page and "Senior DevOps Engineer (m/w/d)" not in page
     page = client.get("/discover?location_type=remote_worldwide").text
-    assert "Site Reliability Engineer" in page and "1 job match" in page
+    assert "Site Reliability Engineer" in page and "1 job · 1 filter active" in page
 
 
 def test_job_detail_shows_explanation_and_sanitised_description(client):
@@ -335,7 +335,7 @@ def test_sources_management(client):
     client.post(f"/sources/{src.id}/delete")
     assert "Greenhouse · newco" not in client.get("/sources").text
     page = client.get("/sources").text
-    assert "LinkedIn" in page and "Not supported" in page
+    assert "LinkedIn" in page and "never connects to LinkedIn" in page and "Save to JobHub" in page
 
 
 def test_source_specific_refresh(client):
@@ -403,3 +403,85 @@ def test_basic_auth_when_configured(settings, mock_feeds):
         assert c.get("/health").status_code == 200
         assert c.get("/", auth=("admin", "wrong-password-123")).status_code == 401
         assert c.get("/", auth=("admin", "correct-horse-battery")).status_code == 200
+
+
+def test_add_job_from_linkedin_url_and_dedupe(client):
+    r = client.get("/jobs/new", params={"url": "https://www.linkedin.com/jobs/view/devops-at-acme-3999888777/?trk=x",
+                                        "title": "(2) Senior DevOps Engineer | Acme Fintech | LinkedIn",
+                                        "text": "Kubernetes, Terraform and Jenkins. 5+ years of experience."})
+    assert r.status_code == 200 and "Detected <strong>LinkedIn</strong>" in r.text
+    assert 'value="Senior DevOps Engineer"' in r.text and 'value="Acme Fintech"' in r.text
+    data = {"url": "https://www.linkedin.com/jobs/view/devops-at-acme-3999888777/?trk=x", "title": "Senior DevOps Engineer",
+            "company": "Acme Fintech", "location": "Pune, India (Hybrid)",
+            "description": "Kubernetes, Terraform and Jenkins. 5+ years of experience.", "action": "track"}
+    r = client.post("/jobs/new", data=data, follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"].startswith("/jobs/")
+    with read_session() as s:
+        job = s.scalar(select(Job).where(Job.external_id == "linkedin:3999888777"))
+        assert job.listing_url == "https://www.linkedin.com/jobs/view/3999888777/"
+        assert job.is_saved and job.is_relevant and job.work_mode == "hybrid" and job.country_code == "IN"
+        assert {"Kubernetes", "Terraform", "Jenkins"} <= set(job.skills)
+        assert job.application.status == "Interested"
+    again = client.post("/jobs/new", data=data, follow_redirects=False)
+    assert "already" in again.headers["location"].lower() or "already" in client.get(again.headers["location"]).text
+    with read_session() as s:
+        assert s.scalar(select(func.count(Job.id)).where(Job.external_id == "linkedin:3999888777")) == 1
+
+
+def test_add_job_validation(client):
+    r = client.post("/jobs/new", data={"url": "javascript:alert(1)", "title": "x"})
+    assert r.status_code == 400 and "valid http(s) job URL" in r.text
+    r = client.post("/jobs/new", data={"url": "https://example.com/job/1", "title": "  "})
+    assert r.status_code == 400
+
+
+def test_bookmarklet_points_at_this_instance(client):
+    page = client.get("/jobs/new").text
+    assert "javascript:(()=&gt;" in page or "javascript:(()=>" in page
+    assert "http://localhost/jobs/new?url=" in page
+
+
+def test_discover_defaults_to_relevant_scope(client):
+    sync_now(client)
+    relevant = client.get("/discover").text
+    everything = client.get("/discover?scope=all").text
+    assert ">Recruiter<" not in relevant and ">Recruiter<" in everything
+    assert "Jobs that fit your profile" in relevant and "All discovered jobs" in everything
+
+
+def test_sources_page_shows_directory_and_setup(client):
+    page = client.get("/sources").text
+    assert "Company career pages" in page and "Find any company" in page
+    assert "developer.adzuna.com" in page  # setup steps shown while no key is configured
+    assert "Needs setup" not in page or "Adzuna" in page
+
+
+def test_add_from_directory_and_url(client):
+    from app.directory import load_directory
+
+    entry = next(e for e in load_directory() if e["ats"] == "lever")
+    r = client.post("/sources/directory", data={"keys": [entry["key"]]}, follow_redirects=False)
+    assert "Added 1 career page" in r.headers["location"].replace("+", " ").replace("%20", " ")
+    wait_for_sync(client)
+    r = client.post("/sources", data={"identifier": "https://jobs.lever.co/samplesite/abc-123", "fetch": "1"},
+                    follow_redirects=False)
+    assert "error=" in r.headers["location"]  # already configured from .env
+    r = client.post("/sources", data={"identifier": "https://jobs.ashbyhq.com/samplecorp"}, follow_redirects=False)
+    assert "notice=" in r.headers["location"]
+    with read_session() as s:
+        from app.models import Source
+
+        keys = {src.key for src in s.scalars(select(Source))}
+    assert entry["key"] in keys and "ashby:samplecorp" in keys
+
+
+def test_company_finder_route(client, monkeypatch):
+    import app.web.admin as admin
+    from tests.conftest import make_client
+
+    monkeypatch.setattr(admin, "_probe_client", lambda: make_client(retries=0))
+    page = client.post("/sources/find", data={"company": "Sample Corp"}).text
+    # conftest serves an Ashby board for "samplecorp" and nothing else for these variants
+    assert "Ashby · samplecorp · 2 open jobs" in page and "Add & fetch" in page
+    page = client.post("/sources/find", data={"company": "Nonexistent Widgets"}).text
+    assert "No public job board found" in page

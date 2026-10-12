@@ -4,13 +4,30 @@
 {% block content %}
 <div class="page-head">
   <div>
-    <h1>Discover Jobs</h1>
-    <p class="muted">{{ page.total }} job{{ '' if page.total == 1 else 's' }} match your filters{% if filters.active_count() %} · {{ filters.active_count() }} filter{{ '' if filters.active_count() == 1 else 's' }} active{% endif %}.</p>
+    <div class="eyebrow">Discover</div>
+    <h1>{{ 'Jobs that fit your profile' if filters.scope == 'relevant' else 'All discovered jobs' }}</h1>
+    <p class="muted">{{ page.total }} job{{ '' if page.total == 1 else 's' }}{% if filters.active_count() %} · {{ filters.active_count() }} filter{{ '' if filters.active_count() == 1 else 's' }} active{% endif %}.
+      {% if filters.scope == 'relevant' %}Showing roles that match your target titles or skills, from every country.{% endif %}</p>
   </div>
   <div class="head-actions">
-    <a class="btn btn-ghost btn-sm" href="/hidden"><svg class="i"><use href="#i-eye-off"/></svg>Hidden jobs</a>
+    <a class="btn btn-ghost btn-sm" href="/hidden"><svg class="i"><use href="#i-eye-off"/></svg>Hidden</a>
+    <a class="btn btn-secondary btn-sm" href="/jobs/new"><svg class="i"><use href="#i-plus"/></svg>Add job</a>
     <a class="btn btn-secondary btn-sm" href="/alerts?q_from={{ filters.query_string(page=1)|urlencode }}"><svg class="i"><use href="#i-bell"/></svg>Save as alert</a>
   </div>
+</div>
+
+<div class="chipbar" aria-label="Quick filters">
+  <div class="seg-toggle" role="group" aria-label="Scope">
+    <a href="/discover?{{ filters.query_string(scope='relevant', page=1) }}" class="{{ 'is-on' if filters.scope == 'relevant' }}">Relevant to me</a>
+    <a href="/discover?{{ filters.query_string(scope='all', page=1) }}" class="{{ 'is-on' if filters.scope == 'all' }}">All jobs</a>
+  </div>
+  <span class="sep"></span>
+  <a class="pill pill-sm{% if filters.countries == ['IN'] %} is-on{% endif %}" href="/discover?scope={{ filters.scope }}&countries=IN">India</a>
+  <a class="pill pill-sm{% if filters.location_type == ['remote_worldwide'] %} is-on{% endif %}" href="/discover?scope={{ filters.scope }}&location_type=remote_worldwide">Remote worldwide</a>
+  <a class="pill pill-sm{% if filters.new %} is-on{% endif %}" href="/discover?scope={{ filters.scope }}&new=1&sort=newest">New</a>
+  <a class="pill pill-sm{% if filters.min_score == 75 %} is-on{% endif %}" href="/discover?scope={{ filters.scope }}&min_score=75">Strong match</a>
+  <a class="pill pill-sm{% if filters.unapplied %} is-on{% endif %}" href="/discover?scope={{ filters.scope }}&unapplied=1">Not applied</a>
+  <a class="pill pill-sm{% if filters.visa %} is-on{% endif %}" href="/discover?scope={{ filters.scope }}&visa=1">Visa sponsorship</a>
 </div>
 
 <div class="with-filters" data-persist-filters="discover" {% if reset %}data-reset="1"{% endif %}>
@@ -41,9 +58,15 @@
       </div>
       {% set base_path = "/discover" %}{% include "partials/pager.html" %}
     {% else %}
-      {% call empty("No jobs match these filters", "Try removing a filter, widening the country selection, or fetching new jobs.") %}
-        <div class="actions center"><a class="btn btn-secondary btn-sm" href="/discover?reset=1">Clear all filters</a></div>
-      {% endcall %}
+      {% if filters.scope == 'relevant' and not filters.active_count() %}
+        {% call empty("No relevant jobs yet", "None of the stored jobs match your target titles or skills. Add company career pages or an Adzuna key on Job Sources, check your profile's target titles, or browse all jobs.", "sparkle") %}
+          <div class="actions center"><a class="btn btn-primary btn-sm" href="/sources">Add sources</a><a class="btn btn-secondary btn-sm" href="/discover?scope=all">Browse all jobs</a></div>
+        {% endcall %}
+      {% else %}
+        {% call empty("No jobs match these filters", "Try removing a filter, widening the country selection, or switching to All jobs.") %}
+          <div class="actions center"><a class="btn btn-secondary btn-sm" href="/discover?reset=1">Clear all filters</a>{% if filters.scope == 'relevant' %}<a class="btn btn-ghost btn-sm" href="/discover?{{ filters.query_string(scope='all', page=1) }}">Search all jobs</a>{% endif %}</div>
+        {% endcall %}
+      {% endif %}
     {% endif %}
   </section>
 </div>

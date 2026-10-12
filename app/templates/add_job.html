@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Add a job{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <div class="eyebrow">Add a job</div>
+    <h1>Save a job from LinkedIn, Naukri or any site</h1>
+    <p class="muted">JobHub stores what you enter here and scores it against your profile. It does not visit the page.</p>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <form method="post" action="/jobs/new" class="panel form">
+    {% if site %}<div class="callout"><svg class="i"><use href="#i-link"/></svg><div>Detected <strong>{{ site }}</strong>. Check the title and company before saving.</div></div>{% endif %}
+    <label class="field"><span>Job URL *</span><input type="url" name="url" required maxlength="2000" value="{{ form.url }}" placeholder="https://www.linkedin.com/jobs/view/…"></label>
+    <div class="form-grid two">
+      <label class="field"><span>Job title *</span><input type="text" name="title" required maxlength="300" value="{{ form.title }}"></label>
+      <label class="field"><span>Company</span><input type="text" name="company" maxlength="200" value="{{ form.company }}"></label>
+    </div>
+    <label class="field"><span>Location <em class="muted">(e.g. “Pune, India (Hybrid)” or “Remote - India”)</em></span><input type="text" name="location" maxlength="300" value="{{ form.location }}"></label>
+    <label class="field"><span>Job description <em class="muted">(paste it for accurate skill matching)</em></span><textarea name="description" rows="12" maxlength="20000">{{ form.description }}</textarea></label>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" name="action" value="save"><svg class="i"><use href="#i-bookmark"/></svg>Save job</button>
+      <button class="btn btn-secondary" type="submit" name="action" value="track"><svg class="i"><use href="#i-briefcase"/></svg>Save & track as Interested</button>
+    </div>
+  </form>
+
+  <aside class="stack">
+    <section class="panel">
+      <h2>One-click from any job page</h2>
+      <p class="small muted">Drag this button to your browser's bookmarks bar:</p>
+      <p><a class="bookmarklet" href="{{ bookmarklet }}" title="Drag me to your bookmarks bar"><svg class="i"><use href="#i-bookmark"/></svg>Save to JobHub</a></p>
+      <ol class="setup-steps">
+        <li>Open a job on LinkedIn, Naukri, Indeed or a company site.</li>
+        <li>Optionally select the job description text.</li>
+        <li>Click <strong>Save to JobHub</strong>. This page opens with the details filled in.</li>
+      </ol>
+      <p class="hint-text">The button only sends the page address, tab title and your selected text (up to 2,500 characters) to your own JobHub at {{ request.base_url }}.</p>
+    </section>
+    <section class="panel">
+      <h2>Want LinkedIn jobs automatically?</h2>
+      <p class="small muted">Set up LinkedIn job-alert emails. JobHub reads them from your mailbox (read-only).</p>
+      <a class="btn btn-secondary btn-sm" href="/sources#linkedin">Set up LinkedIn alerts</a>
+    </section>
+  </aside>
+</div>
+{% endblock %}

@@ -21,16 +21,25 @@
       <label for="nav-toggle" class="icon-btn nav-close" aria-label="Close menu"><svg class="i"><use href="#i-x"/></svg></label>
     </div>
     <nav class="nav">
-      {% set items = [
-        ("dashboard", "/", "Dashboard", "grid", None),
-        ("discover", "/discover", "Discover Jobs", "search", None),
-        ("saved", "/saved", "Saved Jobs", "bookmark", nav.saved),
-        ("applications", "/applications", "My Applications", "briefcase", nav.applications),
-        ("profile", "/profile", "Resume & Profile", "user", None),
-        ("sources", "/sources", "Job Sources", "layers", None),
-        ("alerts", "/alerts", "Job Alerts", "bell", nav.alerts_new),
-        ("settings", "/settings", "Settings", "sliders", None),
+      {% set nav_groups = [
+        ("Find", [
+          ("dashboard", "/", "Dashboard", "grid", None),
+          ("discover", "/discover", "Discover Jobs", "search", nav.relevant),
+          ("saved", "/saved", "Saved Jobs", "bookmark", nav.saved),
+          ("alerts", "/alerts", "Job Alerts", "bell", nav.alerts_new),
+        ]),
+        ("Track", [
+          ("applications", "/applications", "My Applications", "briefcase", nav.applications),
+          ("addjob", "/jobs/new", "Add a Job", "plus", None),
+        ]),
+        ("Setup", [
+          ("profile", "/profile", "Resume & Profile", "user", None),
+          ("sources", "/sources", "Job Sources", "layers", None),
+          ("settings", "/settings", "Settings", "sliders", None),
+        ]),
       ] %}
+      {% for group, items in nav_groups %}
+      <div class="nav-group-label">{{ group }}</div>
       {% for key, href, label, icon, count in items %}
       <a href="{{ href }}" class="nav-item{% if active == key %} is-active{% endif %}"{% if active == key %} aria-current="page"{% endif %}>
         <svg class="i"><use href="#i-{{ icon }}"/></svg>
@@ -38,9 +47,17 @@
         {% if count %}<span class="nav-count{% if key == 'alerts' %} is-accent{% endif %}">{{ count }}</span>{% endif %}
       </a>
       {% endfor %}
+      {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      <span class="muted small">v{{ app_version }} · self-hosted</span>
+      <a class="profile-card" href="/profile">
+        <span class="profile-avatar" aria-hidden="true">{{ initials(nav.profile_name or "Me") }}</span>
+        <span>
+          <span class="profile-name">{{ nav.profile_name or "Your profile" }}</span><br>
+          <span class="profile-sub">{{ nav.profile_headline or "Add your details" }}</span>
+        </span>
+      </a>
+      <span class="version">JobHub v{{ app_version }} · self-hosted</span>
     </div>
   </aside>
   <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
@@ -59,6 +76,7 @@
             {% if sync.running %}Syncing…{% elif sync.last_success_at %}Synced <time datetime="{{ iso(sync.last_success_at) }}" data-relative>{{ fmt_dt(sync.last_success_at) }}</time>{% else %}Not synced yet{% endif %}
           </span>
         </div>
+        <a class="btn btn-secondary btn-sm hide-sm" href="/jobs/new"><svg class="i"><use href="#i-plus"/></svg>Add job</a>
         <form action="/api/sync" method="post" class="js-sync-form">
           <button type="submit" class="btn btn-primary btn-sm" id="fetch-now" {% if sync.running %}disabled{% endif %}>
             <svg class="i"><use href="#i-refresh"/></svg><span class="hide-sm">Fetch Jobs Now</span>

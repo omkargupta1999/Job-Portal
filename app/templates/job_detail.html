@@ -1,22 +1,23 @@
 {% extends "base.html" %}
-{% from "macros.html" import score_badge, status_badge, bar %}
+{% from "macros.html" import ring, avatar, status_badge, bar %}
 {% block title %}{{ job.title }}{% endblock %}
 {% block content %}
 {% set d = job.match_details or {} %}
 <a class="back" href="/discover"><svg class="i"><use href="#i-chevron-left"/></svg>Discover</a>
 
-<header class="detail-head">
-  <div class="company-mark lg" aria-hidden="true">{{ (job.company or '?')[:1]|upper }}</div>
+<header class="detail-hero">
+  {{ avatar(job.company, "lg") }}
   <div class="detail-title">
     <h1>{{ job.title }}</h1>
     <div class="job-company">
       <span class="strong">{{ job.company or 'Company not stated' }}</span>
-      <span class="muted">· {{ location_label(job) }}</span>
+      <span class="dot-sep">•</span><span class="muted">{{ location_label(job) }}</span>
+      {% if job.is_relevant %}<span class="badge tone-success">Relevant to you</span>{% endif %}
       {% if job.is_expired %}<span class="badge tone-muted">Expired {{ fmt_date(job.expired_at) }}</span>{% endif %}
       {% if job.application %}{{ status_badge(job.application.status) }}{% endif %}
     </div>
   </div>
-  {{ score_badge(job.match_score, "score-lg") }}
+  <div>{{ ring(job.match_score, "ring-lg") }}<div class="ring-caption">Match</div></div>
 </header>
 
 <div class="action-bar">

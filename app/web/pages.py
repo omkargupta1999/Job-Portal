@@ -11,12 +11,14 @@ from app.db import read_session
 from app.geo import QUICK_COUNTRIES
 from app.matching import GOOD_MATCH, HIGH_MATCH
 from app.models import (
+    ACTIVE_PIPELINE,
     APPLICATION_STATUSES,
     INTERVIEW_STATUSES,
     SUBMITTED_STATUSES,
     Application,
     Job,
     JobCountry,
+    Profile,
     Source,
     SyncRun,
     utcnow,
@@ -41,11 +43,16 @@ def dashboard(request: Request):
         def count(*conds):
             return s.scalar(select(func.count(Job.id)).where(*active, *conds)) or 0
 
+        rel = Job.is_relevant.is_(True)
         stats = {
             "total": count(),
-            "new": count(Job.first_seen_at >= new_cutoff),
-            "matching": count(Job.match_score >= GOOD_MATCH),
-            "high": count(Job.match_score >= HIGH_MATCH),
+            "relevant": count(rel),
+            "new": count(rel, Job.first_seen_at >= new_cutoff),
+            "new_all": count(Job.first_seen_at >= new_cutoff),
+            "matching": count(rel, Job.match_score >= GOOD_MATCH),
+            "high": count(rel, Job.match_score >= HIGH_MATCH),
+            "in_progress": s.scalar(select(func.count(Application.id)).where(
+                Application.status.in_(ACTIVE_PIPELINE))) or 0,
             "saved": count(Job.is_saved.is_(True)),
             "submitted": s.scalar(select(func.count(Application.id)).where(Application.status.in_(SUBMITTED_STATUSES))) or 0,
             "interviews": s.scalar(select(func.count(Application.id)).where(Application.status.in_(INTERVIEW_STATUSES))) or 0,
@@ -53,24 +60,26 @@ def dashboard(request: Request):
         }
         applied_job_ids = select(Application.job_id).where(Application.job_id.is_not(None),
                                                            Application.status.in_(SUBMITTED_STATUSES + ["Withdrawn"]))
-        top = list(s.scalars(select(Job).where(*active, Job.match_score >= GOOD_MATCH, Job.id.not_in(applied_job_ids))
+        top = list(s.scalars(select(Job).where(*active, rel, Job.match_score >= GOOD_MATCH, Job.id.not_in(applied_job_ids))
                              .order_by(Job.match_score.desc(), Job.first_seen_at.desc()).limit(6)).unique())
-        recent = list(s.scalars(select(Job).where(*active).order_by(Job.first_seen_at.desc(), Job.id.desc())
+        recent = list(s.scalars(select(Job).where(*active, rel).order_by(Job.first_seen_at.desc(), Job.id.desc())
                                 .limit(8)).unique())
         followups = list(s.scalars(
             select(Application).where(Application.follow_up_date.is_not(None),
                                       Application.follow_up_date <= (now + timedelta(days=14)).date(),
                                       Application.status.not_in(TERMINAL))
             .order_by(Application.follow_up_date.asc()).limit(8)).unique())
-        sources = list(s.scalars(select(Source).order_by(Source.enabled.desc(), Source.name)))
+        sources = [src for src in s.scalars(select(Source).where(Source.enabled.is_(True)).order_by(Source.name))
+                   if src.adapter != "manual"]
+        profile = s.get(Profile, 1)
         source_counts = dict(s.execute(select(Job.source_id, func.count(Job.id)).where(Job.is_expired.is_(False))
                                        .group_by(Job.source_id)).all())
         country_counts = dict(s.execute(
             select(JobCountry.country_code, func.count(JobCountry.job_id))
             .join(Job, Job.id == JobCountry.job_id)
-            .where(*active, JobCountry.country_code.in_(QUICK_COUNTRIES))
+            .where(*active, rel, JobCountry.country_code.in_(QUICK_COUNTRIES))
             .group_by(JobCountry.country_code)).all())
-        worldwide = count(Job.location_type == "remote_worldwide")
+        worldwide = count(rel, Job.location_type == "remote_worldwide")
         pipeline = dict(s.execute(select(Application.status, func.count(Application.id))
                                   .group_by(Application.status)).all())
         has_runs = s.scalar(select(func.count(SyncRun.id))) or 0
@@ -79,7 +88,7 @@ def dashboard(request: Request):
     return render(request, "dashboard.html", "dashboard", stats=stats, top=top, recent=recent, followups=followups,
                   sources=sources, source_counts=source_counts, country_counts=country_counts, worldwide=worldwide,
                   pipeline_rows=pipeline_rows, pipeline_max=pipeline_max, has_runs=has_runs, today=now.date(),
-                  new_cutoff=new_cutoff)
+                  new_cutoff=new_cutoff, profile=profile, new_job_days=int(rt["new_job_days"]))
 
 
 def _listing(request: Request, template: str, active: str, filters: JobFilters, **extra):

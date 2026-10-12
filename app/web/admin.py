@@ -12,14 +12,17 @@ from app import __version__
 from app.backup import backup_path, create_backup, list_backups
 from app.config import get_settings
 from app.db import read_session, write_session
+from app.directory import find_career_pages, load_directory, parse_board_url
+from app.http import HttpClient
 from app.migrations import LATEST_VERSION
-from app.models import Alert, Job, Source, SyncRun, utcnow
+from app.models import Alert, Job, Profile, Source, SyncRun, utcnow
+from app.quickadd import bookmarklet
 from app.scheduler import get_scheduler
 from app.scoring import request_rescore, rescore_running
 from app.search import JobFilters, count_jobs
-from app.sources import ADAPTERS, source_key
+from app.sources import ADAPTERS, BOARD_ADAPTERS, source_key
 from app.sources.base import IDENTIFIER_RE
-from app.sources.search_links import SEARCH_SITES
+from app.sources.search_links import SEARCH_SITES, search_links_for_profile
 from app.store import runtime, set_value, validate_runtime_update
 from app.sync import SyncBusy, start_sync_thread
 from app.web.common import iso, json_ok, redirect, render, sync_state, wants_json
@@ -28,38 +31,114 @@ router = APIRouter()
 
 
 # ------------------------------------------------------------------ sources
-@router.get("/sources")
-def sources_page(request: Request):
+def _sources_context(request: Request) -> dict:
     with read_session() as s:
+        profile = s.get(Profile, 1)
         sources = list(s.scalars(select(Source).order_by(Source.adapter, Source.name)))
         active = dict(s.execute(select(Job.source_id, func.count(Job.id)).where(Job.is_expired.is_(False))
                                 .group_by(Job.source_id)).all())
+        relevant = dict(s.execute(select(Job.source_id, func.count(Job.id)).where(
+            Job.is_expired.is_(False), Job.is_relevant.is_(True)).group_by(Job.source_id)).all())
         total = dict(s.execute(select(Job.source_id, func.count(Job.id)).group_by(Job.source_id)).all())
-    return render(request, "sources.html", "sources", sources=sources, active_counts=active, total_counts=total,
-                  adapters=ADAPTERS, search_sites=SEARCH_SITES)
+    by_key = {src.key: src for src in sources}
+    directory = [{**entry, "source": by_key.get(entry["key"])} for entry in load_directory()]
+    return {"sources": sources, "active_counts": active, "relevant_counts": relevant, "total_counts": total,
+            "adapters": ADAPTERS, "search_sites": SEARCH_SITES, "directory": directory,
+            "board_adapters": BOARD_ADAPTERS, "settings_obj": get_settings(), "by_key": set(by_key),
+            "bookmarklet": bookmarklet(str(request.base_url)),
+            "search_links": search_links_for_profile(profile) if profile else []}
+
+
+@router.get("/sources")
+def sources_page(request: Request):
+    return render(request, "sources.html", "sources", **_sources_context(request))
+
+
+def _add_board(s, adapter: str, identifier: str, name: str = "") -> Source | None:
+    """Create a source row if missing. Returns the row (new or existing)."""
+    cls = ADAPTERS[adapter]
+    key = source_key(adapter, identifier)
+    existing = s.scalar(select(Source).where(Source.key == key))
+    if existing:
+        return existing
+    label = f"{name} · {cls.display_name}" if name else (f"{cls.display_name} · {identifier}" if identifier
+                                                        else cls.display_name)
+    src = Source(key=key, adapter=adapter, name=label[:150], identifier=identifier, enabled=True)
+    s.add(src)
+    s.flush()
+    return src
+
+
+def _start_fetch(source_ids: list[int]) -> str:
+    try:
+        start_sync_thread("manual", source_ids)
+        return "Fetching now - watch the progress bar."
+    except SyncBusy:
+        return "A sync is already running; they will be fetched on the next sync."
 
 
 @router.post("/sources")
-def add_source(adapter: str = Form(...), identifier: str = Form("")):
-    cls = ADAPTERS.get(adapter)
-    if cls is None:
-        return redirect("/sources", error="Unknown source type.")
+def add_source(adapter: str = Form(""), identifier: str = Form(""), name: str = Form(""),
+               fetch: str = Form("")):
     identifier = identifier.strip()
+    parsed = parse_board_url(identifier) if "/" in identifier or "." in identifier else None
+    if parsed:
+        adapter, identifier = parsed
+    cls = ADAPTERS.get(adapter)
+    if cls is None or not cls.fetchable:
+        return redirect("/sources", error="Unknown source type. Paste the company's careers URL or choose a platform.")
     if cls.requires_identifier:
-        # Accept a pasted careers URL and take its last path segment.
-        if "/" in identifier:
-            identifier = [p for p in identifier.rstrip("/").split("/") if p][-1].split("?")[0]
         if not IDENTIFIER_RE.match(identifier):
-            return redirect("/sources", error=f"Invalid {cls.identifier_label.lower()}. Use letters, digits, '-', '_' or '.'.")
+            return redirect("/sources", error=f"Invalid {cls.identifier_label.lower()}. "
+                                              "Use letters, digits, '-', '_' or '.', or paste the careers URL.")
     else:
         identifier = ""
-    key = source_key(adapter, identifier)
     with write_session() as s:
-        if s.scalar(select(Source.id).where(Source.key == key)):
+        if s.scalar(select(Source.id).where(Source.key == source_key(adapter, identifier))):
             return redirect("/sources", error="That source is already configured.")
-        name = f"{cls.display_name} · {identifier}" if identifier else cls.display_name
-        s.add(Source(key=key, adapter=adapter, name=name, identifier=identifier, enabled=True))
-    return redirect("/sources", notice=f"Added {key}. Use “Refresh” to fetch it now.")
+        sid = _add_board(s, adapter, identifier, name.strip()[:100]).id
+    msg = f"Added {cls.display_name} · {identifier}." if identifier else f"Added {cls.display_name}."
+    if fetch:
+        msg += " " + _start_fetch([sid])
+    else:
+        msg += " Use Refresh to fetch it now."
+    return redirect("/sources", notice=msg)
+
+
+@router.post("/sources/directory")
+async def add_from_directory(request: Request):
+    form = await request.form()
+    entries = {e["key"]: e for e in load_directory()}
+    region = form.get("region", "")
+    if form.get("all"):
+        chosen = [e for e in entries.values() if not region or region in e["regions"]]
+    else:
+        chosen = [entries[k] for k in form.getlist("keys") if k in entries]
+    if not chosen:
+        return redirect("/sources", error="Select at least one company.")
+    ids = []
+    with write_session() as s:
+        for e in chosen:
+            src = _add_board(s, e["ats"], e["id"], e["name"])
+            if src.enabled:
+                ids.append(src.id)
+    return redirect("/sources", notice=f"Added {len(chosen)} career page(s). {_start_fetch(ids)} "
+                                       "Pages that no longer exist are disabled automatically.")
+
+
+def _probe_client() -> HttpClient:
+    return HttpClient(timeout=8, max_retries=0)
+
+
+@router.post("/sources/find")
+def find_company(request: Request, company: str = Form(...)):
+    company = company.strip()[:80]
+    ctx = _sources_context(request)
+    if not company:
+        return render(request, "sources.html", "sources", error="Enter a company name.", **ctx)
+    with _probe_client() as client:
+        results = find_career_pages(client, company)
+    return render(request, "sources.html", "sources", find_query=company, find_results=results, **ctx)
 
 
 @router.post("/sources/{source_id}/toggle")
