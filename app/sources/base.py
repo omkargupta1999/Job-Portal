@@ -220,19 +220,58 @@ def annual(job: NormalizedJob) -> tuple[int | None, int | None]:
     return annualize(job.salary_min, job.salary_period), annualize(job.salary_max, job.salary_period)
 
 
+class SourceNotConfigured(Exception):
+    """The source needs configuration (e.g. a free API key) before it can run."""
+
+
+@dataclass
+class SearchContext:
+    """What search-based sources should look for; built from the saved profile."""
+
+    titles: list[str] = field(default_factory=list)
+    countries: list[str] = field(default_factory=list)
+    cities: list[str] = field(default_factory=list)
+    skills: list[str] = field(default_factory=list)
+
+    def query_terms(self, limit: int) -> list[str]:
+        """Target titles without seniority words, de-duplicated, in profile order."""
+        out: list[str] = []
+        for title in self.titles:
+            core = re.sub(r"\b(senior|sr\.?|junior|jr\.?|lead|staff|principal)\b", " ", title, flags=re.I)
+            core = re.sub(r"\s+", " ", core).strip()
+            if core and core.lower() not in {o.lower() for o in out}:
+                out.append(core)
+        return out[:limit] or ["DevOps Engineer"][:limit]
+
+
 class SourceAdapter(ABC):
-    """Interface every job source implements."""
+    """Interface every job source implements.
+
+    kind:
+      feed   - one public feed for everyone (Arbeitnow, Remotive, Jobicy, Remote OK)
+      board  - one employer's career page on an ATS (Greenhouse, Lever, Ashby, ...)
+      search - keyword search API driven by your profile (Adzuna)
+      email  - job-alert emails in your own mailbox (LinkedIn alerts)
+      manual - jobs you add yourself (never fetched)
+    """
 
     adapter_type: str = ""
     display_name: str = ""
     description: str = ""
+    kind: str = "feed"
     requires_identifier: bool = False
     identifier_label: str = ""
     allowed_hosts: set[str] = set()
     min_interval_minutes: int = 15
+    # Search/email sources never return a complete list; listings not seen for
+    # this many days are marked expired instead (None = use complete fetches).
+    stale_after_days: int | None = None
     docs_url: str = ""
     terms_note: str = ""
     attribution: str = ""
+    # How the API contract was established (shown on the Sources page).
+    contract_evidence: str = ""
+    fetchable: bool = True
 
     def __init__(self, identifier: str = "") -> None:
         if self.requires_identifier:
@@ -241,5 +280,5 @@ class SourceAdapter(ABC):
         self.identifier = identifier
 
     @abstractmethod
-    def fetch(self, client: HttpClient, max_jobs: int) -> FetchResult:
+    def fetch(self, client: HttpClient, max_jobs: int, ctx: SearchContext | None = None) -> FetchResult:
         """Retrieve and normalise listings. Must not touch the database."""

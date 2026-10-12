@@ -24,9 +24,9 @@ from sqlalchemy import delete, exists, select, update
 from app.config import get_settings
 from app.db import read_session, write_session
 from app.http import FetchError, HttpClient
-from app.models import Alert, Application, Job, JobCountry, Preparation, Source, SyncRun, utcnow
+from app.models import Alert, Application, Job, JobCountry, Preparation, Profile, Source, SyncRun, utcnow
 from app.scoring import apply_score, load_scoring_context
-from app.sources import NormalizedJob, make_adapter
+from app.sources import ADAPTERS, NormalizedJob, SearchContext, SourceNotConfigured, make_adapter
 from app.sources.base import annual
 from app.store import runtime
 
@@ -146,11 +146,13 @@ def _run(trigger: str, source_ids: list[int] | None, client_factory: ClientFacto
             stmt = stmt.where(Source.id.in_(source_ids))
         else:
             stmt = stmt.where(Source.enabled.is_(True))
-        sources = [(src.id, src.adapter, src.identifier, src.name, src.last_attempt_at) for src in s.scalars(stmt)]
+        sources = [(src.id, src.adapter, src.identifier, src.name, src.last_attempt_at) for src in s.scalars(stmt)
+                   if ADAPTERS.get(src.adapter) is None or ADAPTERS[src.adapter].fetchable]
         run.status = "running"
         run.sources_total = len(sources)
         run.message = "Starting" if sources else "No enabled sources."
         rt = runtime(s)
+        ctx = build_search_context(s)
 
     totals = {"fetched": 0, "added": 0, "updated": 0, "skipped": 0, "expired": 0, "errors": 0}
     notes: list[str] = []
@@ -161,7 +163,7 @@ def _run(trigger: str, source_ids: list[int] | None, client_factory: ClientFacto
                 r = s.get(SyncRun, run_id)
                 r.current_source, r.sources_done, r.message = name, done, f"Fetching {name}"
             counts, note = sync_source(sid, adapter_type, ident, last_attempt, client,
-                                       int(rt["max_jobs_per_source"]), respect_intervals)
+                                       int(rt["max_jobs_per_source"]), respect_intervals, ctx)
             for k in totals:
                 totals[k] += counts.get(k, 0)
             if note:
@@ -197,8 +199,17 @@ def _run(trigger: str, source_ids: list[int] | None, client_factory: ClientFacto
     return run_id
 
 
+def build_search_context(session) -> SearchContext:
+    profile = session.get(Profile, 1)
+    if profile is None:
+        return SearchContext()
+    return SearchContext(titles=list(profile.target_titles or []), countries=list(profile.preferred_countries or []),
+                         cities=list(profile.preferred_cities or []), skills=list(profile.skills or []))
+
+
 def sync_source(source_id: int, adapter_type: str, identifier: str, last_attempt: datetime | None,
-                client: HttpClient, max_jobs: int, respect_intervals: bool = True) -> tuple[dict, str]:
+                client: HttpClient, max_jobs: int, respect_intervals: bool = True,
+                ctx: SearchContext | None = None) -> tuple[dict, str]:
     counts = {"fetched": 0, "added": 0, "updated": 0, "skipped": 0, "expired": 0, "errors": 0}
     try:
         adapter = make_adapter(adapter_type, identifier)
@@ -216,8 +227,18 @@ def sync_source(source_id: int, adapter_type: str, identifier: str, last_attempt
     _set_source(source_id, status="running", attempt=now)
     started = utcnow()
     try:
-        result = adapter.fetch(client, max_jobs)
+        result = adapter.fetch(client, max_jobs, ctx)
+    except SourceNotConfigured as exc:
+        _set_source(source_id, status="setup", error=str(exc))
+        return counts, "needs setup"
     except FetchError as exc:
+        if exc.status == 404 and adapter.kind == "board":
+            _set_source(source_id, status="error", disable=True,
+                        error=f"Career page not found (HTTP 404) - disabled automatically. Check the "
+                              f"{adapter.identifier_label.lower()} '{identifier}' or that the company still uses "
+                              f"{adapter.display_name}.")
+            counts["errors"] = 1
+            return counts, "not found (404), disabled"
         kind = "temporary" if exc.temporary else "permanent"
         _set_source(source_id, status="error", error=f"{exc} ({kind})")
         counts["errors"] = 1
@@ -235,6 +256,8 @@ def sync_source(source_id: int, adapter_type: str, identifier: str, last_attempt
         counts["skipped"] += result.invalid
         if result.complete:
             counts["expired"] = expire_missing(source_id, started)
+        elif adapter.stale_after_days:
+            counts["expired"] = expire_missing(source_id, started - timedelta(days=adapter.stale_after_days))
     except Exception as exc:  # noqa: BLE001
         log.exception("Storing jobs for source %s failed", adapter_type)
         _set_source(source_id, status="error", error=f"Storage error: {exc}")
@@ -248,7 +271,7 @@ def sync_source(source_id: int, adapter_type: str, identifier: str, last_attempt
 
 
 def _set_source(source_id: int, *, status: str, error: str = "", attempt: datetime | None = None,
-                success: datetime | None = None, counts: dict | None = None) -> None:
+                success: datetime | None = None, counts: dict | None = None, disable: bool = False) -> None:
     with write_session() as s:
         src = s.get(Source, source_id)
         if src is None:
@@ -256,11 +279,16 @@ def _set_source(source_id: int, *, status: str, error: str = "", attempt: dateti
         src.status = status
         if attempt:
             src.last_attempt_at = attempt
-        if status == "error":
+        if status in {"error", "setup"}:
             src.last_error = error[:2000]
+        if status == "error":
+            src.failure_count = (src.failure_count or 0) + 1
+        if disable:
+            src.enabled = False
         if success:
             src.last_success_at = success
             src.last_error = ""
+            src.failure_count = 0
         if counts is not None:
             src.last_counts = counts
 

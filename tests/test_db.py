@@ -176,3 +176,34 @@ def test_restore_rejects_non_jobhub_file(storage, tmp_path):
     conn.close()
     with pytest.raises(RuntimeError):
         restore_backup(bogus, storage.db_path, storage.backups_dir)
+
+
+def test_upgrade_from_v3_database_flags_relevance(synced):
+    """Simulates the first release's schema (v3) with stored jobs, then upgrades."""
+    from app.db import get_engine
+    from app.models import Job
+    from app.scoring import rescore_if_outdated
+    from app.store import set_value
+
+    engine = get_engine()
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP INDEX IF EXISTS ix_jobs_relevant")
+        conn.exec_driver_sql("ALTER TABLE jobs DROP COLUMN is_relevant")
+        conn.exec_driver_sql("ALTER TABLE sources DROP COLUMN failure_count")
+        conn.exec_driver_sql("DELETE FROM schema_version WHERE version > 3")
+    with write_session() as s:
+        set_value(s, "scoring_version", 1)
+    assert migrate(engine, storage_dir(), backup_fn=None) == LATEST_VERSION
+    with read_session() as s:
+        assert s.scalar(select(func.count(Job.id)).where(Job.is_relevant.is_(True))) == 0  # column default
+    assert rescore_if_outdated() == 11
+    assert rescore_if_outdated() == 0  # only once
+    with read_session() as s:
+        relevant = s.scalar(select(func.count(Job.id)).where(Job.is_relevant.is_(True)))
+    assert 0 < relevant < 11
+
+
+def storage_dir():
+    from app.config import get_settings
+
+    return get_settings().data_dir

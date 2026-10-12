@@ -88,6 +88,7 @@ class Source(Base):
     last_success_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str] = mapped_column(Text, default="")
     last_counts: Mapped[dict] = mapped_column(JSON, default=dict)
+    failure_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
@@ -105,6 +106,7 @@ class Job(Base):
         Index("ix_jobs_company", "company_norm"),
         Index("ix_jobs_fingerprint", "fingerprint"),
         Index("ix_jobs_saved", "is_saved"),
+        Index("ix_jobs_relevant", "is_relevant", "is_hidden", "is_expired"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -157,6 +159,7 @@ class Job(Base):
     is_expired: Mapped[bool] = mapped_column(Boolean, default=False)
 
     match_score: Mapped[int] = mapped_column(Integer, default=0)
+    is_relevant: Mapped[bool] = mapped_column(Boolean, default=False)
     match_details: Mapped[dict] = mapped_column(JSON, default=dict)
 
     is_saved: Mapped[bool] = mapped_column(Boolean, default=False)

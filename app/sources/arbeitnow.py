@@ -13,7 +13,7 @@ import logging
 
 from app.http import HttpClient
 from app.security import validate_external_url
-from app.sources.base import FetchResult, SourceAdapter, build_job, to_datetime
+from app.sources.base import FetchResult, SearchContext, SourceAdapter, build_job, to_datetime
 
 log = logging.getLogger(__name__)
 
@@ -28,9 +28,13 @@ class ArbeitnowAdapter(SourceAdapter):
     allowed_hosts = {"www.arbeitnow.com", "arbeitnow.com"}
     min_interval_minutes = 30
     docs_url = "https://www.arbeitnow.com/api/job-board-api"
+    contract_evidence = (
+        "Verified live: first real sync on 2026-10-12 parsed listings without errors "
+        "(field names originally from secondary sources)."
+    )
     attribution = "Listings via Arbeitnow"
 
-    def fetch(self, client: HttpClient, max_jobs: int) -> FetchResult:
+    def fetch(self, client: HttpClient, max_jobs: int, ctx: SearchContext | None = None) -> FetchResult:
         result = FetchResult()
         url: str | None = API_URL
         params: dict | None = {"page": 1}

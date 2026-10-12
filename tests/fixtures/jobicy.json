@@ -1,0 +1,41 @@
+{
+ "apiVersion": "2",
+ "jobCount": 2,
+ "nextCursor": null,
+ "hasMore": false,
+ "jobs": [
+  {
+   "id": 9001,
+   "url": "https://jobicy.com/jobs/9001-platform-engineer",
+   "jobSlug": "9001-platform-engineer",
+   "jobTitle": "Platform Engineer",
+   "companyName": "Remote First Co",
+   "jobIndustry": [
+    "DevOps & Sysadmin"
+   ],
+   "jobType": [
+    "full-time"
+   ],
+   "jobGeo": "Anywhere",
+   "jobLevel": "Senior",
+   "jobExcerpt": "Build our platform",
+   "jobDescription": "<p>Kubernetes, Helm, Terraform, ArgoCD.</p>",
+   "pubDate": "2026-10-08 10:00:00",
+   "salaryMin": 90000,
+   "salaryMax": 120000,
+   "salaryCurrency": "USD",
+   "salaryPeriod": "yearly"
+  },
+  {
+   "id": 9002,
+   "url": "https://jobicy.com/jobs/9002-devops",
+   "jobTitle": "DevOps Engineer",
+   "companyName": "EMEA Corp",
+   "jobIndustry": "DevOps & Sysadmin",
+   "jobType": "contract",
+   "jobGeo": "EMEA",
+   "jobDescription": "<p>GitLab CI, Docker.</p>",
+   "pubDate": "2026-10-07 10:00:00"
+  }
+ ]
+}

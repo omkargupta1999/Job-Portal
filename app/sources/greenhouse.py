@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from app.http import HttpClient
 from app.security import validate_external_url
-from app.sources.base import FetchResult, SourceAdapter, build_job, to_datetime
+from app.sources.base import FetchResult, SearchContext, SourceAdapter, build_job, to_datetime
 from app.textutil import unescape_html_entities
 
 
@@ -23,13 +23,15 @@ class GreenhouseAdapter(SourceAdapter):
     adapter_type = "greenhouse"
     display_name = "Greenhouse"
     description = "Employer job boards hosted on Greenhouse. Public API, no credentials; one board token per company."
+    kind = "board"
     requires_identifier = True
     identifier_label = "Board token"
     allowed_hosts = {"boards-api.greenhouse.io"}
     min_interval_minutes = 30
     docs_url = "https://developers.greenhouse.io/job-board.html"
+    contract_evidence = "Indirect: secondary sources; official docs page not reachable during development."
 
-    def fetch(self, client: HttpClient, max_jobs: int) -> FetchResult:
+    def fetch(self, client: HttpClient, max_jobs: int, ctx: SearchContext | None = None) -> FetchResult:
         url = f"https://boards-api.greenhouse.io/v1/boards/{self.identifier}/jobs"
         payload = client.get_json(url, self.allowed_hosts, params={"content": "true"})
         items = payload.get("jobs") if isinstance(payload, dict) else None

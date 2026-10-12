@@ -19,6 +19,7 @@ from app.config import Settings, get_settings, set_settings
 from app.db import dispose, init_engine
 from app.migrations import migrate
 from app.scheduler import Scheduler, set_scheduler
+from app.scoring import rescore_if_outdated
 from app.security import SecurityMiddleware
 from app.seed import seed_profile, sync_sources_from_config
 from app.sync import recover_interrupted_runs
@@ -46,6 +47,7 @@ def init_storage(settings: Settings) -> None:
     seed_profile()
     sync_sources_from_config(settings)
     recover_interrupted_runs()
+    rescore_if_outdated()
 
 
 def create_app(settings: Settings | None = None, *, start_scheduler: bool | None = None) -> FastAPI:

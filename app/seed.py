@@ -69,12 +69,20 @@ def sync_sources_from_config(settings: Settings) -> None:
     """Add sources configured in the environment. Never removes or re-enables
     sources the user changed in the UI."""
     wanted: list[tuple[str, str, bool]] = [
+        ("adzuna", "", True),
         ("arbeitnow", "", settings.enable_arbeitnow),
         ("remotive", "", settings.enable_remotive),
+        ("jobicy", "", settings.enable_jobicy),
+        ("remoteok", "", settings.enable_remoteok),
+        ("email_alerts", "", True),
+        ("manual", "", True),
     ]
     wanted += [("greenhouse", t, True) for t in settings.greenhouse_boards]
     wanted += [("lever", t, True) for t in settings.lever_sites]
     wanted += [("lever_eu", t, True) for t in settings.lever_eu_sites]
+    wanted += [("ashby", t, True) for t in settings.ashby_boards]
+    wanted += [("smartrecruiters", t, True) for t in settings.smartrecruiters_companies]
+    wanted += [("workable", t, True) for t in settings.workable_accounts]
     with write_session() as s:
         existing = {row.key for row in s.scalars(select(Source))}
         for adapter, ident, enabled in wanted:

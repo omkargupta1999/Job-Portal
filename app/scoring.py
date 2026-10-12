@@ -9,9 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import read_session, write_session
-from app.matching import JobFacts, ProfileSnapshot, score_job
+from app.matching import SCORING_VERSION, JobFacts, ProfileSnapshot, score_job
 from app.models import Job, Profile
-from app.store import runtime
+from app.store import get_value, runtime, set_value
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ def load_scoring_context(session: Session) -> tuple[ProfileSnapshot, dict, bool]
 def apply_score(job: Job, profile: ProfileSnapshot, weights: dict, strict: bool) -> None:
     result = score_job(JobFacts.from_model(job), profile, weights, strict)
     job.match_score = result["score"]
+    job.is_relevant = bool(result["relevant"])
     job.match_details = result
 
 
@@ -44,6 +45,19 @@ def rescore_all(batch_size: int = 300) -> int:
                 apply_score(job, profile, weights, strict)
     log.info("Re-scored %d jobs", len(ids))
     return len(ids)
+
+
+def rescore_if_outdated() -> int:
+    """Re-score stored jobs once after an upgrade that changed the scoring rules."""
+    with read_session() as s:
+        stored = get_value(s, "scoring_version")
+    if stored == SCORING_VERSION:
+        return 0
+    count = rescore_all()
+    with write_session() as s:
+        set_value(s, "scoring_version", SCORING_VERSION)
+    log.info("Scoring rules updated to v%s; re-scored %d jobs", SCORING_VERSION, count)
+    return count
 
 
 def request_rescore() -> None:

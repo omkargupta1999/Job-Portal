@@ -29,7 +29,12 @@ def test_full_sync_stores_and_scores_jobs(synced):
         assert all(0 <= j.match_score <= 100 and j.match_details.get("components") for j in jobs)
         best = max(jobs, key=lambda j: j.match_score)
         assert best.country_code == "IN"  # profile prefers India
-        assert {src.status for src in s.scalars(select(Source))} == {"ok"}
+        statuses = {src.key: src.status for src in s.scalars(select(Source))}
+        fetched = {"arbeitnow", "remotive", "greenhouse:examplecorp", "lever:samplesite"}
+        assert {statuses[k] for k in fetched} == {"ok"}
+        # Sources needing an API key / mailbox are reported as "setup", not as errors.
+        assert statuses["adzuna"] == "setup" and statuses["email_alerts"] == "setup"
+        assert statuses["manual"] == "never"  # never fetched
 
 
 def test_second_sync_detects_unchanged_and_updates(synced):
@@ -145,7 +150,7 @@ def test_adapter_bug_is_contained(storage, monkeypatch):
     from app.sources.arbeitnow import ArbeitnowAdapter
 
     monkeypatch.setattr(sync_mod, "_default_client", lambda: make_client())
-    monkeypatch.setattr(ArbeitnowAdapter, "fetch", lambda self, c, m: 1 / 0)
+    monkeypatch.setattr(ArbeitnowAdapter, "fetch", lambda self, c, m, ctx=None: 1 / 0)
     run_id = run_sync("manual", respect_intervals=False)
     with read_session() as s:
         assert s.get(SyncRun, run_id).status == "partial"

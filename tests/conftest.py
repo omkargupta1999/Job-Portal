@@ -33,6 +33,22 @@ def feed_router(request: httpx.Request) -> httpx.Response:
         skip = int(request.url.params.get("skip", "0"))
         data = load_fixture("lever.json")
         return httpx.Response(200, json=data[skip:skip + int(request.url.params.get("limit", "100"))])
+    if host == "jobicy.com":
+        return httpx.Response(200, json=load_fixture("jobicy.json"))
+    if host == "remoteok.com":
+        return httpx.Response(200, json=load_fixture("remoteok.json"))
+    if host == "api.adzuna.com":
+        if request.url.params.get("app_key") != "test-key":
+            return httpx.Response(401, json={"exception": "AUTH_FAIL"})
+        return httpx.Response(200, json=load_fixture("adzuna_in.json"))
+    if host == "api.ashbyhq.com" and path == "/posting-api/job-board/samplecorp":
+        return httpx.Response(200, json=load_fixture("ashby.json"))
+    if host == "api.smartrecruiters.com" and path == "/v1/companies/SampleSR/postings":
+        return httpx.Response(200, json=load_fixture("smartrecruiters_list.json"))
+    if host == "api.smartrecruiters.com" and path == "/v1/companies/SampleSR/postings/744000001":
+        return httpx.Response(200, json=load_fixture("smartrecruiters_detail.json"))
+    if host == "apply.workable.com" and path == "/api/v1/widget/accounts/sampleworkable":
+        return httpx.Response(200, json=load_fixture("workable.json"))
     return httpx.Response(404, json={"error": "not found"})
 
 
@@ -51,6 +67,10 @@ def settings(tmp_path, monkeypatch):
         "JOBHUB_GREENHOUSE_BOARDS": "examplecorp",
         "JOBHUB_LEVER_SITES": "samplesite",
         "JOBHUB_EXPIRED_RETENTION_DAYS": "0",
+        # Newer feeds are covered by tests/test_new_sources.py; keep the original
+        # integration tests on a stable set of 11 fixture jobs.
+        "JOBHUB_SOURCE_JOBICY": "false",
+        "JOBHUB_SOURCE_REMOTEOK": "false",
     }
     s = load_settings(env)
     set_settings(s)

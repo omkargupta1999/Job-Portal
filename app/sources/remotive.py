@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from app.http import HttpClient
 from app.security import validate_external_url
-from app.sources.base import FetchResult, SourceAdapter, build_job, to_datetime
+from app.sources.base import FetchResult, SearchContext, SourceAdapter, build_job, to_datetime
 
 API_URL = "https://remotive.com/api/remote-jobs"
 
@@ -28,10 +28,11 @@ class RemotiveAdapter(SourceAdapter):
     allowed_hosts = {"remotive.com", "www.remotive.com"}
     min_interval_minutes = 360
     docs_url = "https://github.com/remotive-com/remote-jobs-api"
+    contract_evidence = "Direct: official README; verified live on the first real sync (2026-10-12)."
     terms_note = "Listings are delayed 24h by Remotive. Attribution: listings link back to Remotive."
     attribution = "via Remotive"
 
-    def fetch(self, client: HttpClient, max_jobs: int) -> FetchResult:
+    def fetch(self, client: HttpClient, max_jobs: int, ctx: SearchContext | None = None) -> FetchResult:
         payload = client.get_json(API_URL, self.allowed_hosts)
         items = payload.get("jobs") if isinstance(payload, dict) else None
         if not isinstance(items, list):

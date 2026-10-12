@@ -96,6 +96,30 @@ class Settings:
     greenhouse_boards: list[str] = field(default_factory=list)
     lever_sites: list[str] = field(default_factory=list)
     lever_eu_sites: list[str] = field(default_factory=list)
+    enable_jobicy: bool = True
+    enable_remoteok: bool = True
+    ashby_boards: list[str] = field(default_factory=list)
+    smartrecruiters_companies: list[str] = field(default_factory=list)
+    workable_accounts: list[str] = field(default_factory=list)
+    adzuna_app_id: str = ""
+    adzuna_app_key: str = field(default="", repr=False)
+    adzuna_countries: list[str] = field(default_factory=list)
+    adzuna_max_queries: int = 8
+    imap_host: str = ""
+    imap_port: int = 993
+    imap_user: str = ""
+    imap_password: str = field(default="", repr=False)
+    imap_folder: str = "INBOX"
+    imap_senders: list[str] = field(default_factory=lambda: ["jobalerts-noreply@linkedin.com"])
+    imap_days: int = 14
+
+    @property
+    def adzuna_configured(self) -> bool:
+        return bool(self.adzuna_app_id and self.adzuna_app_key)
+
+    @property
+    def imap_configured(self) -> bool:
+        return bool(self.imap_host and self.imap_user and self.imap_password)
 
     @property
     def db_path(self) -> Path:
@@ -141,6 +165,29 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
             "After editing .env run 'docker compose up -d' (restart does not reload .env)."
         )
 
+    adzuna_id = get("JOBHUB_ADZUNA_APP_ID", "").strip()
+    adzuna_key = get("JOBHUB_ADZUNA_APP_KEY", "").strip()
+    if bool(adzuna_id) != bool(adzuna_key):
+        raise ConfigError("JOBHUB_ADZUNA_APP_ID and JOBHUB_ADZUNA_APP_KEY must be set together")
+    adzuna_countries = [c.lower() for c in _parse_list(get("JOBHUB_ADZUNA_COUNTRIES", ""))]
+    for c in adzuna_countries:
+        if not re.fullmatch(r"[a-z]{2}", c):
+            raise ConfigError(f"JOBHUB_ADZUNA_COUNTRIES must be 2-letter country codes, got {c!r}")
+
+    imap_host = get("JOBHUB_IMAP_HOST", "").strip()
+    imap_user = get("JOBHUB_IMAP_USER", "").strip()
+    imap_password = get("JOBHUB_IMAP_PASSWORD", "")
+    if imap_host or imap_user or imap_password:
+        if not (imap_host and imap_user and imap_password):
+            raise ConfigError("JOBHUB_IMAP_HOST, JOBHUB_IMAP_USER and JOBHUB_IMAP_PASSWORD must be set together "
+                              "(leave all three empty to disable job-alert email import)")
+        if not re.fullmatch(r"[A-Za-z0-9.-]{1,253}", imap_host):
+            raise ConfigError(f"JOBHUB_IMAP_HOST is not a valid host name: {imap_host!r}")
+    imap_senders = [x.lower() for x in _parse_list(get("JOBHUB_IMAP_SENDERS", "jobalerts-noreply@linkedin.com"))]
+    for sender in imap_senders:
+        if not re.fullmatch(r"[^@\s\"()]+@[A-Za-z0-9.-]+", sender):
+            raise ConfigError(f"JOBHUB_IMAP_SENDERS contains an invalid address: {sender!r}")
+
     allowed_hosts = _parse_list(get("JOBHUB_ALLOWED_HOSTS", "127.0.0.1,localhost"))
     if not allowed_hosts:
         raise ConfigError("JOBHUB_ALLOWED_HOSTS must not be empty")
@@ -176,6 +223,24 @@ def load_settings(env: dict[str, str] | None = None) -> Settings:
         ),
         lever_sites=_parse_board_tokens("JOBHUB_LEVER_SITES", get("JOBHUB_LEVER_SITES", "")),
         lever_eu_sites=_parse_board_tokens("JOBHUB_LEVER_EU_SITES", get("JOBHUB_LEVER_EU_SITES", "")),
+        enable_jobicy=_parse_bool("JOBHUB_SOURCE_JOBICY", get("JOBHUB_SOURCE_JOBICY", "true")),
+        enable_remoteok=_parse_bool("JOBHUB_SOURCE_REMOTEOK", get("JOBHUB_SOURCE_REMOTEOK", "true")),
+        ashby_boards=_parse_board_tokens("JOBHUB_ASHBY_BOARDS", get("JOBHUB_ASHBY_BOARDS", "")),
+        smartrecruiters_companies=_parse_board_tokens(
+            "JOBHUB_SMARTRECRUITERS_COMPANIES", get("JOBHUB_SMARTRECRUITERS_COMPANIES", "")),
+        workable_accounts=_parse_board_tokens("JOBHUB_WORKABLE_ACCOUNTS", get("JOBHUB_WORKABLE_ACCOUNTS", "")),
+        adzuna_app_id=adzuna_id,
+        adzuna_app_key=adzuna_key,
+        adzuna_countries=adzuna_countries,
+        adzuna_max_queries=_parse_number(
+            "JOBHUB_ADZUNA_MAX_QUERIES", get("JOBHUB_ADZUNA_MAX_QUERIES", "8"), int, 1, 50),
+        imap_host=imap_host,
+        imap_port=_parse_number("JOBHUB_IMAP_PORT", get("JOBHUB_IMAP_PORT", "993"), int, 1, 65535),
+        imap_user=imap_user,
+        imap_password=imap_password,
+        imap_folder=get("JOBHUB_IMAP_FOLDER", "INBOX").strip() or "INBOX",
+        imap_senders=imap_senders,
+        imap_days=_parse_number("JOBHUB_IMAP_DAYS", get("JOBHUB_IMAP_DAYS", "14"), int, 1, 90),
     )
     return settings
 

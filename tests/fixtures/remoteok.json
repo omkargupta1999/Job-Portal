@@ -1,0 +1,35 @@
+[
+ {
+  "last_updated": 1760000000,
+  "legal": "API Terms of Service: Please link back to the URL on Remote OK and mention Remote OK as a source."
+ },
+ {
+  "id": "123456",
+  "slug": "remote-sre-acme-123456",
+  "epoch": 1760100000,
+  "date": "2026-10-10T12:00:00+00:00",
+  "company": "Acme Remote",
+  "position": "Senior SRE",
+  "tags": [
+   "sre",
+   "kubernetes"
+  ],
+  "description": "<p>On-call, Kubernetes, Terraform.</p>",
+  "location": "Worldwide",
+  "salary_min": 100000,
+  "salary_max": 140000,
+  "apply_url": "https://remoteok.com/remote-jobs/remote-sre-acme-123456/apply",
+  "url": "https://remoteok.com/remote-jobs/remote-sre-acme-123456"
+ },
+ {
+  "id": "123457",
+  "slug": "devops-beta-123457",
+  "epoch": 1760000000,
+  "company": "Beta",
+  "position": "DevOps Engineer",
+  "tags": [],
+  "description": "<p>Docker</p>",
+  "location": "",
+  "url": "https://remoteok.com/remote-jobs/devops-beta-123457"
+ }
+]

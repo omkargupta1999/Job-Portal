@@ -1,0 +1,42 @@
+{
+ "apiVersion": "1",
+ "jobs": [
+  {
+   "id": "a1b2",
+   "title": "Senior Platform Engineer",
+   "department": "Engineering",
+   "team": "Infra",
+   "employmentType": "FullTime",
+   "location": "Bengaluru, India",
+   "secondaryLocations": [
+    {
+     "location": "Hyderabad, India"
+    }
+   ],
+   "isRemote": false,
+   "workplaceType": "Hybrid",
+   "publishedAt": "2026-10-01T10:00:00.000Z",
+   "isListed": true,
+   "jobUrl": "https://jobs.ashbyhq.com/samplecorp/a1b2",
+   "applyUrl": "https://jobs.ashbyhq.com/samplecorp/a1b2/application",
+   "descriptionHtml": "<p>Kubernetes and Terraform at scale.</p>",
+   "compensation": {
+    "summaryComponents": [
+     {
+      "compensationType": "Salary",
+      "interval": "1 YEAR",
+      "currencyCode": "INR",
+      "minValue": 3000000,
+      "maxValue": 4500000
+     }
+    ]
+   }
+  },
+  {
+   "id": "hidden1",
+   "title": "Unlisted role",
+   "isListed": false,
+   "jobUrl": "https://jobs.ashbyhq.com/samplecorp/hidden1"
+  }
+ ]
+}

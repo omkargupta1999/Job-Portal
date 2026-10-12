@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from app.http import HttpClient
 from app.security import validate_external_url
-from app.sources.base import FetchResult, SourceAdapter, build_job, to_datetime
+from app.sources.base import FetchResult, SearchContext, SourceAdapter, build_job, to_datetime
 
 PAGE_SIZE = 100
 _INTERVALS = {"per-year-salary": "year", "per-month-salary": "month", "per-week-salary": "week",
@@ -28,14 +28,16 @@ class LeverAdapter(SourceAdapter):
     adapter_type = "lever"
     display_name = "Lever"
     description = "Employer job boards hosted on Lever. Public API, no credentials; one site name per company."
+    kind = "board"
     requires_identifier = True
     identifier_label = "Site name"
     allowed_hosts = {"api.lever.co"}
     base_url = "https://api.lever.co/v0/postings"
     min_interval_minutes = 30
     docs_url = "https://github.com/lever/postings-api"
+    contract_evidence = "Direct: official README (github.com/lever/postings-api)."
 
-    def fetch(self, client: HttpClient, max_jobs: int) -> FetchResult:
+    def fetch(self, client: HttpClient, max_jobs: int, ctx: SearchContext | None = None) -> FetchResult:
         result = FetchResult()
         seen: set[str] = set()
         skip = 0

@@ -13,6 +13,7 @@ from app.geo import is_valid_country
 from app.models import ACTIVE_PIPELINE, Application, Job, JobCountry, utcnow
 from app.textutil import EMPLOYMENT_TYPES
 
+SCOPES = {"relevant": "Relevant to my profile", "all": "All jobs"}
 SORTS = {
     "match": "Best match",
     "newest": "Newest",
@@ -34,6 +35,8 @@ _INT_FIELDS = {"salary_min", "salary_max", "exp_min", "exp_max", "min_score", "p
 
 @dataclass
 class JobFilters:
+    # "relevant": only jobs whose role matches the profile (default); "all": everything.
+    scope: str = "relevant"
     q: str = ""
     title: str = ""
     skills: str = ""
@@ -100,6 +103,8 @@ class JobFilters:
         f.source = [s for s in f.source if s.isdigit()]
         f.remote_country = f.remote_country.upper() if is_valid_country(f.remote_country) else ""
         f.currency = f.currency.upper()[:3] if f.currency.isalpha() else ""
+        if f.scope not in SCOPES:
+            f.scope = "relevant"
         if f.sort not in SORTS:
             f.sort = "match"
         f.page = max(1, f.page or 1)
@@ -129,7 +134,7 @@ class JobFilters:
         return urlencode(self.to_params(**overrides))
 
     def active_count(self) -> int:
-        skip = {"sort", "page"}
+        skip = {"sort", "page", "scope"}
         defaults = JobFilters()
         return sum(1 for fld in fields(self) if fld.name not in skip and getattr(self, fld.name) != getattr(defaults, fld.name))
 
@@ -142,6 +147,8 @@ def _like(value: str) -> str:
 def build_conditions(f: JobFilters, new_job_days: int = 3, now: datetime | None = None) -> list:
     now = now or utcnow()
     conds = []
+    if f.scope == "relevant":
+        conds.append(Job.is_relevant.is_(True))
     if f.hidden_only:
         conds.append(Job.is_hidden.is_(True))
     elif not f.include_hidden:

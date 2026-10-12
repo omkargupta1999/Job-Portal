@@ -1,0 +1,29 @@
+{
+ "name": "Sample Workable Inc",
+ "description": "",
+ "jobs": [
+  {
+   "title": "Cloud Infrastructure Engineer",
+   "shortcode": "ABC123",
+   "employment_type": "Full-time",
+   "telecommuting": true,
+   "department": "Ops",
+   "url": "https://apply.workable.com/j/ABC123",
+   "application_url": "https://apply.workable.com/j/ABC123/apply",
+   "published_on": "2026-10-03",
+   "country": "India",
+   "city": "Chennai",
+   "state": "Tamil Nadu",
+   "locations": [
+    {
+     "country": "India",
+     "countryCode": "IN",
+     "city": "Chennai",
+     "region": "Tamil Nadu",
+     "hidden": false
+    }
+   ],
+   "description": "<p>AWS, Terraform, Python.</p>"
+  }
+ ]
+}

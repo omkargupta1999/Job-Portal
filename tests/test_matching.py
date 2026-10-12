@@ -113,3 +113,27 @@ def test_overqualified_and_junior_roles():
     assert score_job(job(title="Junior DevOps Engineer", years_min=None, experience_level="junior"),
                      profile())["components"]["experience"]["score"] == 40
     assert score_job(job(years_min=1, years_max=2), profile())["components"]["experience"]["score"] == 75
+
+
+def test_relocation_preference_surfaces_abroad_jobs():
+    abroad = job(country_code="DE", countries=["DE"], city="Berlin", location_type="physical")
+    assert score_job(abroad, profile())["components"]["location"]["score"] == 5
+    open_p = profile(open_to_relocation=True)
+    assert score_job(abroad, open_p)["components"]["location"]["score"] == 55
+    sponsored = job(country_code="DE", countries=["DE"], city="Berlin", visa_sponsorship=True)
+    result = score_job(sponsored, open_p)
+    assert result["components"]["location"]["score"] == 70 and not result["location_capped"]
+    assert "visa sponsorship" in result["components"]["location"]["detail"]
+
+
+def test_relevance_is_role_based():
+    assert score_job(job(), profile())["relevant"] is True
+    us = job(country_code="US", countries=["US"], city="Austin")
+    assert score_job(us, profile())["relevant"] is True  # location does not affect relevance
+    frontend = job(title="Frontend Developer", skills=["JavaScript", "TypeScript", "Docker"])
+    assert score_job(frontend, profile())["relevant"] is False
+    platform_by_skills = job(title="Software Engineer, Infrastructure Tooling",
+                             skills=["Kubernetes", "Terraform", "Helm", "Go"])
+    assert score_job(platform_by_skills, profile())["relevant"] is True
+    empty = ProfileSnapshot()
+    assert score_job(frontend, empty)["relevant"] is True

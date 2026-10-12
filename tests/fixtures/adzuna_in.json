@@ -1,0 +1,60 @@
+{
+ "count": 3,
+ "mean": 0,
+ "results": [
+  {
+   "id": "4711",
+   "title": "Senior <strong>DevOps</strong> Engineer",
+   "description": "We need Kubernetes, Terraform and Jenkins experience. 5+ years of experience required.",
+   "created": "2026-10-10T09:00:00Z",
+   "redirect_url": "https://www.adzuna.in/land/ad/4711?se=abc",
+   "company": {
+    "display_name": "Infra Systems Pvt Ltd"
+   },
+   "location": {
+    "display_name": "Pune, Maharashtra",
+    "area": [
+     "India",
+     "Maharashtra",
+     "Pune"
+    ]
+   },
+   "salary_min": 2400000,
+   "salary_max": 3200000,
+   "salary_is_predicted": "0",
+   "contract_time": "full_time",
+   "contract_type": "permanent",
+   "category": {
+    "label": "IT Jobs",
+    "tag": "it-jobs"
+   }
+  },
+  {
+   "id": "4712",
+   "title": "Site Reliability Engineer",
+   "description": "SRE with AWS and Prometheus.",
+   "created": "2026-10-09T09:00:00Z",
+   "redirect_url": "https://www.adzuna.in/land/ad/4712",
+   "company": {
+    "display_name": "CloudScale"
+   },
+   "location": {
+    "display_name": "Bangalore",
+    "area": [
+     "India",
+     "Karnataka",
+     "Bangalore"
+    ]
+   },
+   "salary_min": 1800000,
+   "salary_max": 1800000,
+   "salary_is_predicted": "1",
+   "contract_time": "full_time"
+  },
+  {
+   "id": "4713",
+   "title": "",
+   "redirect_url": "https://www.adzuna.in/land/ad/4713"
+  }
+ ]
+}

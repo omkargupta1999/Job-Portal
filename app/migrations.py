@@ -44,10 +44,22 @@ def _m003_fts_like_indexes(conn: Connection) -> None:
     conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_sync_runs_status ON sync_runs (status)")
 
 
+def _m004_relevance_and_failures(conn: Connection) -> None:
+    job_cols = {c["name"] for c in inspect(conn).get_columns("jobs")}
+    if "is_relevant" not in job_cols:
+        conn.exec_driver_sql("ALTER TABLE jobs ADD COLUMN is_relevant BOOLEAN NOT NULL DEFAULT 0")
+    conn.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_jobs_relevant ON jobs (is_relevant, is_hidden, is_expired)")
+    src_cols = {c["name"] for c in inspect(conn).get_columns("sources")}
+    if "failure_count" not in src_cols:
+        conn.exec_driver_sql("ALTER TABLE sources ADD COLUMN failure_count INTEGER NOT NULL DEFAULT 0")
+
+
 MIGRATIONS: list[Callable[[Connection], None]] = [
     _m001_initial,
     _m002_job_last_opened,
     _m003_fts_like_indexes,
+    _m004_relevance_and_failures,
 ]
 LATEST_VERSION = len(MIGRATIONS)
 

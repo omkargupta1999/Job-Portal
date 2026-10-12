@@ -6,6 +6,9 @@ from app.search import JobFilters, search_jobs
 
 
 def find(qs: str, **kw) -> list[str]:
+    """Search all jobs unless the query sets a scope explicitly."""
+    if "scope=" not in qs:
+        qs = f"scope=all&{qs}" if qs else "scope=all"
     f = JobFilters.from_params(QueryParams(qs))
     with read_session() as s:
         page = search_jobs(s, f, per_page=kw.get("per_page", 50))
@@ -85,19 +88,19 @@ def test_keyword_search_escapes_wildcards(synced):
 
 
 def test_sorting_and_pagination(synced):
-    f = JobFilters.from_params(QueryParams("sort=company"))
+    f = JobFilters.from_params(QueryParams("scope=all&" + "sort=company"))
     with read_session() as s:
         companies = [j.company.lower() for j in search_jobs(s, f, per_page=50).items]
     assert companies == sorted(companies)
-    f = JobFilters.from_params(QueryParams("sort=match"))
+    f = JobFilters.from_params(QueryParams("scope=all&" + "sort=match"))
     with read_session() as s:
         scores = [j.match_score for j in search_jobs(s, f, per_page=50).items]
     assert scores == sorted(scores, reverse=True)
-    f = JobFilters.from_params(QueryParams("sort=salary"))
+    f = JobFilters.from_params(QueryParams("scope=all&" + "sort=salary"))
     with read_session() as s:
         first = search_jobs(s, f, per_page=50).items[0]
     assert first.salary_annual_max is not None
-    f = JobFilters.from_params(QueryParams("page=2"))
+    f = JobFilters.from_params(QueryParams("scope=all&" + "page=2"))
     with read_session() as s:
         page = search_jobs(s, f, per_page=4)
     assert page.page == 2 and len(page.items) == 4 and page.pages == 3
@@ -109,3 +112,17 @@ def test_invalid_params_ignored_and_roundtrip():
     assert f.min_score == 100 and f.source == []
     again = JobFilters.from_params(QueryParams(f.query_string()))
     assert again == f
+
+
+def test_relevant_scope_is_default_and_role_based(synced):
+    relevant = set(find("scope=relevant"))
+    everything = set(find(""))
+    assert relevant < everything
+    # Non-DevOps roles are excluded by default...
+    for ext in ("frontend-developer-remote-456", "4000003"):  # Frontend Developer, Recruiter
+        assert ext not in relevant
+    # ...while DevOps-family roles are kept regardless of location (Berlin, US remote, worldwide).
+    for ext in ("senior-devops-engineer-berlin-123", "1900001", "1900003", "aaaa-1111", "4000001"):
+        assert ext in relevant
+    assert JobFilters.from_params(QueryParams("")).scope == "relevant"
+    assert JobFilters.from_params(QueryParams("scope=bogus")).scope == "relevant"

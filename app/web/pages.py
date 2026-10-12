@@ -103,6 +103,7 @@ def discover(request: Request):
 @router.get("/saved")
 def saved(request: Request):
     filters = JobFilters.from_params(request.query_params)
+    filters.scope = "all"
     filters.saved = True
     filters.include_expired = True
     if request.query_params.get("sort") is None:
@@ -113,6 +114,7 @@ def saved(request: Request):
 @router.get("/hidden")
 def hidden(request: Request):
     filters = JobFilters.from_params(request.query_params)
+    filters.scope = "all"
     filters.hidden_only = True
     filters.include_expired = True
     return _listing(request, "hidden.html", "discover", filters)

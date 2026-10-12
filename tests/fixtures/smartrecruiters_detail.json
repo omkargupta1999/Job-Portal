@@ -1,0 +1,18 @@
+{
+ "id": "744000001",
+ "name": "DevOps Engineer",
+ "postingUrl": "https://jobs.smartrecruiters.com/SampleSR/744000001-devops-engineer",
+ "applyUrl": "https://jobs.smartrecruiters.com/SampleSR/744000001-devops-engineer?oga=true",
+ "jobAd": {
+  "sections": {
+   "jobDescription": {
+    "title": "Job Description",
+    "text": "<p>Jenkins, Ansible, Kubernetes.</p>"
+   },
+   "qualifications": {
+    "title": "Qualifications",
+    "text": "<ul><li>4+ years of experience</li></ul>"
+   }
+  }
+ }
+}

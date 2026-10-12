@@ -1,0 +1,44 @@
+{
+ "offset": 0,
+ "limit": 100,
+ "totalFound": 2,
+ "content": [
+  {
+   "id": "744000001",
+   "name": "DevOps Engineer",
+   "company": {
+    "identifier": "SampleSR",
+    "name": "Sample SR Ltd"
+   },
+   "releasedDate": "2026-10-02T08:00:00.000Z",
+   "location": {
+    "city": "Hyderabad",
+    "region": "TS",
+    "country": "in",
+    "remote": false,
+    "fullLocation": "Hyderabad, Telangana, India"
+   },
+   "typeOfEmployment": {
+    "label": "Full-time"
+   },
+   "experienceLevel": {
+    "label": "Mid-Senior Level"
+   },
+   "department": {
+    "label": "IT"
+   }
+  },
+  {
+   "id": "744000002",
+   "name": "Sales Manager",
+   "company": {
+    "name": "Sample SR Ltd"
+   },
+   "releasedDate": "2026-10-02T08:00:00.000Z",
+   "location": {
+    "city": "Mumbai",
+    "country": "in"
+   }
+  }
+ ]
+}

@@ -27,7 +27,11 @@ COMPONENT_LABELS = {
 NEUTRAL = {"skills": 50, "experience": 70, "location": 60, "work_mode": 60, "employment": 70}
 HIGH_MATCH = 75
 GOOD_MATCH = 60
-SCORING_VERSION = 1
+SCORING_VERSION = 2
+# A job is "relevant" when its role matches yours, independent of location.
+RELEVANT_TITLE_SCORE = 60
+RELEVANT_MIN_SKILLS = 3
+RELEVANT_SKILLS_SCORE = 50
 
 ROLE_FAMILIES: dict[str, list[str]] = {
     "devops": [r"devops", r"dev ops"],
@@ -69,6 +73,7 @@ class ProfileSnapshot:
     preferred_cities: list[str] = field(default_factory=list)
     work_modes: list[str] = field(default_factory=list)
     remote_worldwide_ok: bool = True
+    open_to_relocation: bool | None = None
     employment_types: list[str] = field(default_factory=list)
 
     @classmethod
@@ -84,6 +89,7 @@ class ProfileSnapshot:
             work_modes=list(p.work_modes or []),
             remote_worldwide_ok=bool(p.remote_worldwide_ok),
             employment_types=list(p.employment_types or []),
+            open_to_relocation=getattr(p, "open_to_relocation", None),
         )
 
     def skill_set(self) -> set[str]:
@@ -107,6 +113,8 @@ class JobFacts:
     location_type: str
     remote_scope: str
     employment_type: str
+    visa_sponsorship: bool | None = None
+    relocation: bool | None = None
 
     @classmethod
     def from_model(cls, j) -> JobFacts:
@@ -125,6 +133,8 @@ class JobFacts:
             location_type=j.location_type or "unknown",
             remote_scope=j.remote_scope or "",
             employment_type=j.employment_type or "",
+            visa_sponsorship=j.visa_sponsorship,
+            relocation=j.relocation,
         )
 
 
@@ -285,7 +295,13 @@ def location_score(job: JobFacts, profile: ProfileSnapshot) -> tuple[int, str]:
             if cities:
                 return 65, f"In {country_name(job.country_code)}, but {job.city} is not a preferred city."
             return 85, f"Located in {country_name(job.country_code)}."
-        return 5, f"Located in {country_name(job.country_code) or job.city}, outside {pref_names}."
+        where = country_name(job.country_code) or job.city
+        if profile.open_to_relocation:
+            if job.visa_sponsorship or job.relocation:
+                support = "visa sponsorship" if job.visa_sponsorship else "relocation assistance"
+                return 70, f"Located in {where}; you are open to relocating and the posting mentions {support}."
+            return 55, f"Located in {where}, outside {pref_names}; you are open to relocating."
+        return 5, f"Located in {where}, outside {pref_names}."
     return 30, "Location not stated in the posting."
 
 
@@ -364,8 +380,12 @@ def score_job(job: JobFacts, profile: ProfileSnapshot, weights: dict | None = No
     if capped:
         reasons.append("Score capped at 45 because the location is outside your preferences.")
 
+    relevant, relevance_reason = is_relevant_role(job, profile, s_title, skill_info)
+
     return {
         "score": int(round(overall)),
+        "relevant": relevant,
+        "relevance_reason": relevance_reason,
         "components": components,
         "matched_skills": skill_info["matched"],
         "missing_required": skill_info["missing_required"],
@@ -377,6 +397,25 @@ def score_job(job: JobFacts, profile: ProfileSnapshot, weights: dict | None = No
         "location_capped": capped,
         "version": SCORING_VERSION,
     }
+
+
+def is_relevant_role(job: JobFacts, profile: ProfileSnapshot, title_score_value: int,
+                     skill_info: dict) -> tuple[bool, str]:
+    """Role relevance, deliberately independent of location and salary.
+
+    Relevant when the title is in (or adjacent to) your role family, or when
+    the posting requires several of your skills. With an empty profile every
+    job is treated as relevant so nothing is hidden.
+    """
+    if not (profile.target_titles or profile.past_titles or profile.skills):
+        return True, "Profile has no titles or skills yet."
+    if title_score_value >= RELEVANT_TITLE_SCORE:
+        return True, "Title matches your target roles."
+    matched = len(skill_info.get("matched") or [])
+    required = len(job.skills)
+    if matched >= RELEVANT_MIN_SKILLS and required and 100 * matched / required >= RELEVANT_SKILLS_SCORE:
+        return True, f"Requires {matched} of your skills."
+    return False, "Title and required skills do not match your profile."
 
 
 def score_band(score: int) -> str:
